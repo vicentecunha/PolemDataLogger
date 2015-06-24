@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Atmel Studio Solution File, Format Version 11.00
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "POLEM  DataLogger", "POLEM  DataLogger\POLEM  DataLogger.cproj", "{1A1B92D4-A2BC-4ED1-9BDE-67AAA24E8A4E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|AVR = Debug|AVR
+		Release|AVR = Release|AVR
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1A1B92D4-A2BC-4ED1-9BDE-67AAA24E8A4E}.Debug|AVR.ActiveCfg = Debug|AVR
+		{1A1B92D4-A2BC-4ED1-9BDE-67AAA24E8A4E}.Debug|AVR.Build.0 = Debug|AVR
+		{1A1B92D4-A2BC-4ED1-9BDE-67AAA24E8A4E}.Release|AVR.ActiveCfg = Release|AVR
+		{1A1B92D4-A2BC-4ED1-9BDE-67AAA24E8A4E}.Release|AVR.Build.0 = Release|AVR
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
