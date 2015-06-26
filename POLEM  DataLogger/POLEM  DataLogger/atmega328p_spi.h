@@ -97,9 +97,9 @@ char SPI_DUMMY;
 //-----------------------------------------------------------------------------
 //	Common usage macros:
 //-----------------------------------------------------------------------------
-#define SPI_SET_SS			PORTB |=  (1 << PORTB2)
+#define SPI_SET_SS				PORTB |=  (1 << PORTB2)
 #define SPI_LOWER_SS			PORTB &= ~(1 << PORTB2)
-#define SPI_TRANSMIT_BYTE(BYTE)		SPDR = BYTE
-#define SPI_WAIT_TRANSMISSION		while(!(SPSR & (1<<SPIF)))
+#define SPI_WAIT_TRANSMISSION	while(!(SPSR & (1<<SPIF)))
+#define SPI_TRANSMIT_BYTE(BYTE)	SPDR = BYTE; SPI_WAIT_TRANSMISSION
 #define SPI_RECEIVED_BYTE		SPDR
 #endif
