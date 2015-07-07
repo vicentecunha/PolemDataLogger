@@ -2,23 +2,10 @@
 // ATmega328p SPI 
 //	Author: Vicente Cunha
 //	Date: june 2015
-//	License: WTFPL
-//-----------------------------------------------------------------------------
-//            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
-//                    Version 2, December 2004
-//
-// Copyright (C) 2004 Sam Hocevar <sam@hocevar.net>
-//
-// Everyone is permitted to copy and distribute verbatim or modified
-// copies of this license document, and changing it is allowed as long
-// as the name is changed.
-//
-//            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
-//   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
-//
-//  0. You just DO WHAT THE FUCK YOU WANT TO.
+//	License: --
 //-----------------------------------------------------------------------------
 #include <avr/io.h>
+#include "atmega328p_sd.h"
 #ifndef SPI_H
 #define SPI_H
 //-----------------------------------------------------------------------------
@@ -102,4 +89,7 @@ char SPI_DUMMY;
 #define SPI_WAIT_TRANSMISSION	while(!(SPSR & (1<<SPIF)))
 #define SPI_TRANSMIT_BYTE(BYTE)	SPDR = BYTE; SPI_WAIT_TRANSMISSION
 #define SPI_RECEIVED_BYTE		SPDR
+#define SPI_TRANSMIT_DATA_BLOCK(DATA) \
+	for(int SPI_K = 0; SPI_K < SD_DATABLOCK_LENGTH; SPI_K++)\
+		SPI_TRANSMIT_BYTE(DATA[SPI_K]);
 #endif

@@ -36,11 +36,14 @@ void SD_init()
 	SPI_CLOCK_DIVIDER_2;
 }
 //-----------------------------------------------------------------------------
-// SD write block.
+// Write block to SD.
 //-----------------------------------------------------------------------------
-
+void writeBlock(unsigned char* address, unsigned char* data)
+{
+	SD_CMD24(address)
+}
 //-----------------------------------------------------------------------------
-// MAIN.
+// MAIN
 //-----------------------------------------------------------------------------
 int main(void)
 {
@@ -48,5 +51,10 @@ int main(void)
 	SPI_init();
 	SD_init();
 	
+	unsigned char address[] = {0x00,0x00,0x00,0x10};
+	//Hello World!
+	unsigned char data[SD_DATABLOCK_LENGTH] =
+		{72,101,108,108,111,32,87,111,114,108,100,33};
 	
+	writeBlock(address,data);
 }
