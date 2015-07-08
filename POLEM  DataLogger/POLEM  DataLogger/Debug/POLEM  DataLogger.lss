@@ -3,30 +3,34 @@ POLEM  DataLogger.elf:     file format elf32-avr
 
 Sections:
 Idx Name          Size      VMA       LMA       File off  Algn
-  0 .text         000000b8  00000000  00000000  00000054  2**1
+  0 .text         0000024c  00000000  00000000  00000074  2**1
                   CONTENTS, ALLOC, LOAD, READONLY, CODE
-  1 .comment      00000030  00000000  00000000  0000010c  2**0
+  1 .bss          0000000c  00800100  00800100  000002c0  2**0
+                  ALLOC
+  2 .comment      00000030  00000000  00000000  000002c0  2**0
                   CONTENTS, READONLY
-  2 .debug_aranges 00000038  00000000  00000000  0000013c  2**0
+  3 .debug_aranges 00000080  00000000  00000000  000002f0  2**0
                   CONTENTS, READONLY, DEBUGGING
-  3 .debug_info   000000f0  00000000  00000000  00000174  2**0
+  4 .debug_info   0000030c  00000000  00000000  00000370  2**0
                   CONTENTS, READONLY, DEBUGGING
-  4 .debug_abbrev 00000085  00000000  00000000  00000264  2**0
+  5 .debug_abbrev 00000156  00000000  00000000  0000067c  2**0
                   CONTENTS, READONLY, DEBUGGING
-  5 .debug_line   000000e2  00000000  00000000  000002e9  2**0
+  6 .debug_line   000001bb  00000000  00000000  000007d2  2**0
                   CONTENTS, READONLY, DEBUGGING
-  6 .debug_frame  00000054  00000000  00000000  000003cc  2**2
+  7 .debug_frame  00000148  00000000  00000000  00000990  2**2
                   CONTENTS, READONLY, DEBUGGING
-  7 .debug_str    0000018e  00000000  00000000  00000420  2**0
+  8 .debug_str    00000252  00000000  00000000  00000ad8  2**0
                   CONTENTS, READONLY, DEBUGGING
-  8 .debug_ranges 00000028  00000000  00000000  000005ae  2**0
+  9 .debug_loc    000001f8  00000000  00000000  00000d2a  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 10 .debug_ranges 00000070  00000000  00000000  00000f22  2**0
                   CONTENTS, READONLY, DEBUGGING
 
 Disassembly of section .text:
 
 00000000 <__vectors>:
    0:	0c 94 34 00 	jmp	0x68	; 0x68 <__ctors_end>
-   4:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
+   4:	0c 94 48 00 	jmp	0x90	; 0x90 <__vector_1>
    8:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
    c:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
   10:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
@@ -42,11 +46,11 @@ Disassembly of section .text:
   38:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
   3c:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
   40:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
-  44:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
+  44:	0c 94 01 01 	jmp	0x202	; 0x202 <__vector_17>
   48:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
   4c:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
   50:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
-  54:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
+  54:	0c 94 87 00 	jmp	0x10e	; 0x10e <__vector_21>
   58:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
   5c:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
   60:	0c 94 46 00 	jmp	0x8c	; 0x8c <__bad_interrupt>
@@ -70,60 +74,341 @@ Disassembly of section .text:
   7c:	1d 92       	st	X+, r1
 
 0000007e <.do_clear_bss_start>:
-  7e:	a0 30       	cpi	r26, 0x00	; 0
+  7e:	ac 30       	cpi	r26, 0x0C	; 12
   80:	b2 07       	cpc	r27, r18
   82:	e1 f7       	brne	.-8      	; 0x7c <.do_clear_bss_loop>
-  84:	0e 94 55 00 	call	0xaa	; 0xaa <main>
-  88:	0c 94 5a 00 	jmp	0xb4	; 0xb4 <_exit>
+  84:	0e 94 10 01 	call	0x220	; 0x220 <main>
+  88:	0c 94 24 01 	jmp	0x248	; 0x248 <_exit>
 
 0000008c <__bad_interrupt>:
   8c:	0c 94 00 00 	jmp	0	; 0x0 <__vectors>
 
-00000090 <rainGaugeInit>:
-//	Pinout: Arduino Pin 2 (PD2)
+00000090 <__vector_1>:
+}
 //-----------------------------------------------------------------------------
-void rainGaugeInit()
+// Interrupt Handlers
+//-----------------------------------------------------------------------------
+ISR(INT0_vect)
 {
-	// The falling edge of INT0 generates an interrupt request.
-	EICRA |=  (1 << ISC01);
-  90:	e9 e6       	ldi	r30, 0x69	; 105
-  92:	f0 e0       	ldi	r31, 0x00	; 0
-  94:	80 81       	ld	r24, Z
-  96:	82 60       	ori	r24, 0x02	; 2
-  98:	80 83       	st	Z, r24
-	EICRA &= ~(1 << ISC00);
-  9a:	80 81       	ld	r24, Z
-  9c:	8e 7f       	andi	r24, 0xFE	; 254
-  9e:	80 83       	st	Z, r24
-	
-	// External Interrupt Request 0 Enable.
-	EIMSK |= (1 << INT0);
-  a0:	e8 9a       	sbi	0x1d, 0	; 29
-	SREG |= (1 << I);
-  a2:	8f b7       	in	r24, 0x3f	; 63
-  a4:	80 68       	ori	r24, 0x80	; 128
-  a6:	8f bf       	out	0x3f, r24	; 63
-  a8:	08 95       	ret
+  90:	1f 92       	push	r1
+  92:	0f 92       	push	r0
+  94:	0f b6       	in	r0, 0x3f	; 63
+  96:	0f 92       	push	r0
+  98:	11 24       	eor	r1, r1
+  9a:	2f 93       	push	r18
+  9c:	3f 93       	push	r19
+  9e:	4f 93       	push	r20
+  a0:	5f 93       	push	r21
+  a2:	6f 93       	push	r22
+  a4:	7f 93       	push	r23
+  a6:	8f 93       	push	r24
+  a8:	9f 93       	push	r25
+  aa:	af 93       	push	r26
+	pluviometerCounter++;
+  ac:	20 91 04 01 	lds	r18, 0x0104
+  b0:	30 91 05 01 	lds	r19, 0x0105
+  b4:	40 91 06 01 	lds	r20, 0x0106
+  b8:	50 91 07 01 	lds	r21, 0x0107
+  bc:	60 91 08 01 	lds	r22, 0x0108
+  c0:	70 91 09 01 	lds	r23, 0x0109
+  c4:	80 91 0a 01 	lds	r24, 0x010A
+  c8:	90 91 0b 01 	lds	r25, 0x010B
+  cc:	a1 e0       	ldi	r26, 0x01	; 1
+  ce:	0e 94 18 01 	call	0x230	; 0x230 <__adddi3_s8>
+  d2:	20 93 04 01 	sts	0x0104, r18
+  d6:	30 93 05 01 	sts	0x0105, r19
+  da:	40 93 06 01 	sts	0x0106, r20
+  de:	50 93 07 01 	sts	0x0107, r21
+  e2:	60 93 08 01 	sts	0x0108, r22
+  e6:	70 93 09 01 	sts	0x0109, r23
+  ea:	80 93 0a 01 	sts	0x010A, r24
+  ee:	90 93 0b 01 	sts	0x010B, r25
+}
+  f2:	af 91       	pop	r26
+  f4:	9f 91       	pop	r25
+  f6:	8f 91       	pop	r24
+  f8:	7f 91       	pop	r23
+  fa:	6f 91       	pop	r22
+  fc:	5f 91       	pop	r21
+  fe:	4f 91       	pop	r20
+ 100:	3f 91       	pop	r19
+ 102:	2f 91       	pop	r18
+ 104:	0f 90       	pop	r0
+ 106:	0f be       	out	0x3f, r0	; 63
+ 108:	0f 90       	pop	r0
+ 10a:	1f 90       	pop	r1
+ 10c:	18 95       	reti
 
-000000aa <main>:
-// MAIN
+0000010e <__vector_21>:
+}
 //-----------------------------------------------------------------------------
-int main()
+// Interrupt Handlers
+//-----------------------------------------------------------------------------
+ISR(ADC_vect)
 {
-	// Peripherals:
-	rainGaugeInit();
-  aa:	0e 94 48 00 	call	0x90	; 0x90 <rainGaugeInit>
-	SDCardInit();	
+ 10e:	1f 92       	push	r1
+ 110:	0f 92       	push	r0
+ 112:	0f b6       	in	r0, 0x3f	; 63
+ 114:	0f 92       	push	r0
+ 116:	11 24       	eor	r1, r1
+ 118:	2f 93       	push	r18
+ 11a:	8f 93       	push	r24
+ 11c:	9f 93       	push	r25
+	tensiometerMeasure = (ADCH << 8) + ADCL;
+ 11e:	80 91 79 00 	lds	r24, 0x0079
+ 122:	20 91 78 00 	lds	r18, 0x0078
+ 126:	90 e0       	ldi	r25, 0x00	; 0
+ 128:	98 2f       	mov	r25, r24
+ 12a:	88 27       	eor	r24, r24
+ 12c:	82 0f       	add	r24, r18
+ 12e:	91 1d       	adc	r25, r1
+ 130:	90 93 03 01 	sts	0x0103, r25
+ 134:	80 93 02 01 	sts	0x0102, r24
+	conversionComplete = 1;
+ 138:	81 e0       	ldi	r24, 0x01	; 1
+ 13a:	80 93 01 01 	sts	0x0101, r24
+}
+ 13e:	9f 91       	pop	r25
+ 140:	8f 91       	pop	r24
+ 142:	2f 91       	pop	r18
+ 144:	0f 90       	pop	r0
+ 146:	0f be       	out	0x3f, r0	; 63
+ 148:	0f 90       	pop	r0
+ 14a:	1f 90       	pop	r1
+ 14c:	18 95       	reti
+
+0000014e <debugLedsInit>:
+//	Resources: IO pins 3 and 4
+//-----------------------------------------------------------------------------
+void debugLedsInit()
+{
+	// Setting pins as output
+	DDRD  |= (1 << DDD4)|(1 << DDD3);
+ 14e:	8a b1       	in	r24, 0x0a	; 10
+ 150:	88 61       	ori	r24, 0x18	; 24
+ 152:	8a b9       	out	0x0a, r24	; 10
 	
-	// 
+	// Initial state: turned off
+	PORTD |= (1 << PORTD4)|(1 << PORTD3);
+ 154:	8b b1       	in	r24, 0x0b	; 11
+ 156:	88 61       	ori	r24, 0x18	; 24
+ 158:	8b b9       	out	0x0b, r24	; 11
+ 15a:	08 95       	ret
+
+0000015c <raiseOKLed>:
+//-----------------------------------------------------------------------------
+//	OK (green) LED
+//-----------------------------------------------------------------------------
+void raiseOKLed()
+{
+	PORTD |=  (1 << PORTD4);
+ 15c:	5c 9a       	sbi	0x0b, 4	; 11
+	PORTD &= ~(1 << PORTD3);
+ 15e:	5b 98       	cbi	0x0b, 3	; 11
+ 160:	08 95       	ret
+
+00000162 <raiseWarningLed>:
+//-----------------------------------------------------------------------------
+//	Warning (red) LED
+//-----------------------------------------------------------------------------
+void raiseWarningLed()
+{
+	PORTD &= ~(1 << PORTD4);
+ 162:	5c 98       	cbi	0x0b, 4	; 11
+	PORTD |=  (1 << PORTD3);
+ 164:	5b 9a       	sbi	0x0b, 3	; 11
+ 166:	08 95       	ret
+
+00000168 <spiTransfer>:
+//-----------------------------------------------------------------------------
+// Send byte to MOSI line, wait transmission, and return received byte by MISO
+//-----------------------------------------------------------------------------
+uint8_t spiTransfer(uint8_t byte)
+{
+	spiTransferComplete = 0;
+ 168:	10 92 00 01 	sts	0x0100, r1
+	SPDR = byte;
+ 16c:	8e bd       	out	0x2e, r24	; 46
+	while(!spiTransferComplete);
+ 16e:	80 91 00 01 	lds	r24, 0x0100
+ 172:	81 11       	cpse	r24, r1
+ 174:	01 c0       	rjmp	.+2      	; 0x178 <spiTransfer+0x10>
+ 176:	ff cf       	rjmp	.-2      	; 0x176 <spiTransfer+0xe>
+	return SPDR;
+ 178:	8e b5       	in	r24, 0x2e	; 46
+}
+ 17a:	08 95       	ret
+
+0000017c <SDCardInit>:
+//	Resources: SPI - Serial Peripheral Interface
+//-----------------------------------------------------------------------------
+void SDCardInit()
+{
+	// The MSB of the data word is transmitted first.
+	SPCR &= ~(1 << DORD);
+ 17c:	8c b5       	in	r24, 0x2c	; 44
+ 17e:	8f 7d       	andi	r24, 0xDF	; 223
+ 180:	8c bd       	out	0x2c, r24	; 44
+	
+	// Master SPI mode.
+	SPCR |= (1 << MSTR);
+ 182:	8c b5       	in	r24, 0x2c	; 44
+ 184:	80 61       	ori	r24, 0x10	; 16
+ 186:	8c bd       	out	0x2c, r24	; 44
+	
+	// SPI mode 0.
+	SPCR &= ~((1 << CPOL)|(1 << CPHA));
+ 188:	8c b5       	in	r24, 0x2c	; 44
+ 18a:	83 7f       	andi	r24, 0xF3	; 243
+ 18c:	8c bd       	out	0x2c, r24	; 44
+	
+	// CLock rate of 250 Hz (prescaler of 64).
+	SPSR &= ~(1 << SPI2X);
+ 18e:	8d b5       	in	r24, 0x2d	; 45
+ 190:	8e 7f       	andi	r24, 0xFE	; 254
+ 192:	8d bd       	out	0x2d, r24	; 45
+	SPCR |=  (1 << SPR1);
+ 194:	8c b5       	in	r24, 0x2c	; 44
+ 196:	82 60       	ori	r24, 0x02	; 2
+ 198:	8c bd       	out	0x2c, r24	; 44
+	SPCR &= ~(1 << SPR0);
+ 19a:	8c b5       	in	r24, 0x2c	; 44
+ 19c:	8e 7f       	andi	r24, 0xFE	; 254
+ 19e:	8c bd       	out	0x2c, r24	; 44
+	
+	// Pin configurations.
+	DDRB |= (1<<DDB2)|(1<<DDB3)|(1<<DDB5);
+ 1a0:	84 b1       	in	r24, 0x04	; 4
+ 1a2:	8c 62       	ori	r24, 0x2C	; 44
+ 1a4:	84 b9       	out	0x04, r24	; 4
+	DDRB &= ~(1 << DDB4);
+ 1a6:	24 98       	cbi	0x04, 4	; 4
+	
+	// SPI Interrupt Enable.
+	SPCR |= (1 << SPIE);
+ 1a8:	8c b5       	in	r24, 0x2c	; 44
+ 1aa:	80 68       	ori	r24, 0x80	; 128
+ 1ac:	8c bd       	out	0x2c, r24	; 44
+	
+	// SPI Enable.
+	SPCR |= (1 << SPE);
+ 1ae:	8c b5       	in	r24, 0x2c	; 44
+ 1b0:	80 64       	ori	r24, 0x40	; 64
+ 1b2:	8c bd       	out	0x2c, r24	; 44
+	
+	// Power on to native SD.
+	PORTB |= (1 << PORTB2);
+ 1b4:	2a 9a       	sbi	0x05, 2	; 5
+ 1b6:	8a e0       	ldi	r24, 0x0A	; 10
+ 1b8:	90 e0       	ldi	r25, 0x00	; 0
+	for(int SD_K=0;SD_K<10;SD_K++)
+		SPDR = 0xFF;
+ 1ba:	2f ef       	ldi	r18, 0xFF	; 255
+ 1bc:	2e bd       	out	0x2e, r18	; 46
+ 1be:	01 97       	sbiw	r24, 0x01	; 1
+	// SPI Enable.
+	SPCR |= (1 << SPE);
+	
+	// Power on to native SD.
+	PORTB |= (1 << PORTB2);
+	for(int SD_K=0;SD_K<10;SD_K++)
+ 1c0:	00 97       	sbiw	r24, 0x00	; 0
+ 1c2:	e1 f7       	brne	.-8      	; 0x1bc <SDCardInit+0x40>
+		SPDR = 0xFF;
+	
+	// Software reset (CMD0).
+	PORTB &= ~(1 << PORTB2);
+ 1c4:	2a 98       	cbi	0x05, 2	; 5
+	spiTransfer(0x40);
+ 1c6:	80 e4       	ldi	r24, 0x40	; 64
+ 1c8:	0e 94 b4 00 	call	0x168	; 0x168 <spiTransfer>
+	for(uint8_t k = 0; k < 4; k++)
+		spiTransfer(0x00);
+ 1cc:	80 e0       	ldi	r24, 0x00	; 0
+ 1ce:	0e 94 b4 00 	call	0x168	; 0x168 <spiTransfer>
+ 1d2:	80 e0       	ldi	r24, 0x00	; 0
+ 1d4:	0e 94 b4 00 	call	0x168	; 0x168 <spiTransfer>
+ 1d8:	80 e0       	ldi	r24, 0x00	; 0
+ 1da:	0e 94 b4 00 	call	0x168	; 0x168 <spiTransfer>
+ 1de:	80 e0       	ldi	r24, 0x00	; 0
+ 1e0:	0e 94 b4 00 	call	0x168	; 0x168 <spiTransfer>
+	spiTransfer(0x95);
+ 1e4:	85 e9       	ldi	r24, 0x95	; 149
+ 1e6:	0e 94 b4 00 	call	0x168	; 0x168 <spiTransfer>
+	uint8_t R1 = spiTransfer(0xFF);
+ 1ea:	8f ef       	ldi	r24, 0xFF	; 255
+ 1ec:	0e 94 b4 00 	call	0x168	; 0x168 <spiTransfer>
+	PORTB |= (1 << PORTB2);
+ 1f0:	2a 9a       	sbi	0x05, 2	; 5
+	
+	// DEBUG: check response
+	if(R1 == 0x01) raiseOKLed();
+ 1f2:	81 30       	cpi	r24, 0x01	; 1
+ 1f4:	19 f4       	brne	.+6      	; 0x1fc <SDCardInit+0x80>
+ 1f6:	0e 94 ae 00 	call	0x15c	; 0x15c <raiseOKLed>
+ 1fa:	08 95       	ret
+	else raiseWarningLed();
+ 1fc:	0e 94 b1 00 	call	0x162	; 0x162 <raiseWarningLed>
+ 200:	08 95       	ret
+
+00000202 <__vector_17>:
+}
+//-----------------------------------------------------------------------------
+// Interrupt Handlers
+//-----------------------------------------------------------------------------
+ISR(SPI_STC_vect)
+{
+ 202:	1f 92       	push	r1
+ 204:	0f 92       	push	r0
+ 206:	0f b6       	in	r0, 0x3f	; 63
+ 208:	0f 92       	push	r0
+ 20a:	11 24       	eor	r1, r1
+ 20c:	8f 93       	push	r24
+	spiTransferComplete = 1;
+ 20e:	81 e0       	ldi	r24, 0x01	; 1
+ 210:	80 93 00 01 	sts	0x0100, r24
+}
+ 214:	8f 91       	pop	r24
+ 216:	0f 90       	pop	r0
+ 218:	0f be       	out	0x3f, r0	; 63
+ 21a:	0f 90       	pop	r0
+ 21c:	1f 90       	pop	r1
+ 21e:	18 95       	reti
+
+00000220 <main>:
+	// DEBUG: check SDCardInit()
+	
+	// Initialization
+	//pluviometerInit();
+	//tensiometerInit();
+	debugLedsInit();
+ 220:	0e 94 a7 00 	call	0x14e	; 0x14e <debugLedsInit>
+	SDCardInit();
+ 224:	0e 94 be 00 	call	0x17c	; 0x17c <SDCardInit>
+	sei();
+ 228:	78 94       	sei
 	
 	return 0;
-  ae:	80 e0       	ldi	r24, 0x00	; 0
-  b0:	90 e0       	ldi	r25, 0x00	; 0
-  b2:	08 95       	ret
+ 22a:	80 e0       	ldi	r24, 0x00	; 0
+ 22c:	90 e0       	ldi	r25, 0x00	; 0
+ 22e:	08 95       	ret
 
-000000b4 <_exit>:
-  b4:	f8 94       	cli
+00000230 <__adddi3_s8>:
+ 230:	00 24       	eor	r0, r0
+ 232:	a7 fd       	sbrc	r26, 7
+ 234:	00 94       	com	r0
+ 236:	2a 0f       	add	r18, r26
+ 238:	30 1d       	adc	r19, r0
+ 23a:	40 1d       	adc	r20, r0
+ 23c:	50 1d       	adc	r21, r0
+ 23e:	60 1d       	adc	r22, r0
+ 240:	70 1d       	adc	r23, r0
+ 242:	80 1d       	adc	r24, r0
+ 244:	90 1d       	adc	r25, r0
+ 246:	08 95       	ret
 
-000000b6 <__stop_program>:
-  b6:	ff cf       	rjmp	.-2      	; 0xb6 <__stop_program>
+00000248 <_exit>:
+ 248:	f8 94       	cli
+
+0000024a <__stop_program>:
+ 24a:	ff cf       	rjmp	.-2      	; 0x24a <__stop_program>

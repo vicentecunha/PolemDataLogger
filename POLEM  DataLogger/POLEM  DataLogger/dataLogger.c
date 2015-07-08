@@ -4,7 +4,6 @@
 //	Date: june 2015
 //	License: --
 //-----------------------------------------------------------------------------
-#include <avr/io.h>
 #include <avr/interrupt.h>
 
 /* Pluviometer */
@@ -92,8 +91,52 @@ ISR(ADC_vect)
 	conversionComplete = 1;
 }
 
+/* Debug Leds */
+//-----------------------------------------------------------------------------
+//	Resources: IO pins 3 and 4
+//-----------------------------------------------------------------------------
+void debugLedsInit()
+{
+	// Setting pins as output
+	DDRD  |= (1 << DDD4)|(1 << DDD3);
+	
+	// Initial state: turned off
+	PORTD |= (1 << PORTD4)|(1 << PORTD3);
+}
+//-----------------------------------------------------------------------------
+//	OK (green) LED
+//-----------------------------------------------------------------------------
+void raiseOKLed()
+{
+	PORTD |=  (1 << PORTD4);
+	PORTD &= ~(1 << PORTD3);
+};
+//-----------------------------------------------------------------------------
+//	Warning (red) LED
+//-----------------------------------------------------------------------------
+void raiseWarningLed()
+{
+	PORTD &= ~(1 << PORTD4);
+	PORTD |=  (1 << PORTD3);
+};
+
 /* SD Card */
 //-----------------------------------------------------------------------------
+// Global Variables
+//-----------------------------------------------------------------------------
+uint8_t spiTransferComplete = 0;
+//-----------------------------------------------------------------------------
+// Send byte to MOSI line, wait transmission, and return received byte by MISO
+//-----------------------------------------------------------------------------
+uint8_t spiTransfer(uint8_t byte)
+{
+	spiTransferComplete = 0;
+	SPDR = byte;
+	while(!spiTransferComplete);
+	return SPDR;
+}
+//-----------------------------------------------------------------------------
+// Initialization
 //	Resources: SPI - Serial Peripheral Interface
 //-----------------------------------------------------------------------------
 void SDCardInit()
@@ -110,31 +153,52 @@ void SDCardInit()
 	// CLock rate of 250 Hz (prescaler of 64).
 	SPSR &= ~(1 << SPI2X);
 	SPCR |=  (1 << SPR1);
-	SPR0 &= ~(1 << SPR0);
+	SPCR &= ~(1 << SPR0);
+	
+	// Pin configurations.
+	DDRB |= (1<<DDB2)|(1<<DDB3)|(1<<DDB5);
+	DDRB &= ~(1 << DDB4);
 	
 	// SPI Interrupt Enable.
 	SPCR |= (1 << SPIE);
 	
 	// SPI Enable.
 	SPCR |= (1 << SPE);
-}
-//-----------------------------------------------------------------------------
-// Single Analog-to-Digital Conversion
-//-----------------------------------------------------------------------------
-void adConversion()
-{
-	// ADC Start Conversion.
-	ADCSRA |= (1 << ADSC);
 	
-	// Wait conversion.
-	conversionComplete = 0;
-	while(!conversionComplete);
+	// Power on to native SD.
+	PORTB |= (1 << PORTB2);
+	for(int SD_K=0;SD_K<10;SD_K++)
+		SPDR = 0xFF;
+	
+	// Software reset (CMD0).
+	PORTB &= ~(1 << PORTB2);
+	spiTransfer(0x40);
+	for(uint8_t k = 0; k < 4; k++)
+		spiTransfer(0x00);
+	spiTransfer(0x95);
+	uint8_t R1 = spiTransfer(0xFF);
+	PORTB |= (1 << PORTB2);
+	
+	// DEBUG: check response
+	if(R1 == 0x01) raiseOKLed();
+	else raiseWarningLed();
+	
+	// Initialization process (CMD1).
+	//PORTB &= ~(1 << PORTB2);
+	//spiTransfer(0x41);
+	//for(uint8_t k = 0; k < 4; k++)
+	//	spiTransfer(0x00);
+	//spiTransfer(0x01);
+	//uint8_t R1 = spiTransfer(0xFF);
+	//PORTB |= (1 << PORTB2);
 }
 //-----------------------------------------------------------------------------
 // Interrupt Handlers
 //-----------------------------------------------------------------------------
-
-
+ISR(SPI_STC_vect)
+{
+	spiTransferComplete = 1;
+}
 
 /* Hibernate */
 //-----------------------------------------------------------------------------
@@ -148,13 +212,14 @@ void hibernate(int hours)
 /* Main */
 int main()
 {
+	// DEBUG: check SDCardInit() with CMD0
+	
 	// Initialization
-	pluviometerInit();
-	tensiometerInit();
+	//pluviometerInit();
+	//tensiometerInit();
+	debugLedsInit();
 	SDCardInit();
 	sei();
-	
-	// 
 	
 	return 0;
 };

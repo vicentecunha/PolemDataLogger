@@ -4,6 +4,8 @@ c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-t
                               c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/../../../../avr/lib/avr5/crtm328p.o (exit)
 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_clear_bss.o)
                               dataLogger.o (__do_clear_bss)
+c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_adddi3_s8.o)
+                              dataLogger.o (__adddi3_s8)
 
 Discarded input sections
 
@@ -12,12 +14,14 @@ Discarded input sections
  .text          0x00000000        0x0 dataLogger.o
  .data          0x00000000        0x0 dataLogger.o
  .bss           0x00000000        0x0 dataLogger.o
+ .text.pluviometerInit
+                0x00000000       0x1e dataLogger.o
  .text.tensiometerInit
+                0x00000000       0x38 dataLogger.o
+ .text.adConversion
+                0x00000000       0x10 dataLogger.o
+ .text.hibernate
                 0x00000000        0x2 dataLogger.o
- .text.SDCardInit
-                0x00000000        0x2 dataLogger.o
- .bss.pluviometerCounter
-                0x00000000        0x8 dataLogger.o
  .text          0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_exit.o)
  .data          0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_exit.o)
  .bss           0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_exit.o)
@@ -50,6 +54,21 @@ Discarded input sections
                 0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_clear_bss.o)
  .text.libgcc.fixed
                 0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_clear_bss.o)
+ .text          0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_adddi3_s8.o)
+ .data          0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_adddi3_s8.o)
+ .bss           0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_adddi3_s8.o)
+ .text.libgcc.mul
+                0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_adddi3_s8.o)
+ .text.libgcc.div
+                0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_adddi3_s8.o)
+ .text.libgcc.prologue
+                0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_adddi3_s8.o)
+ .text.libgcc.builtins
+                0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_adddi3_s8.o)
+ .text.libgcc.fmul
+                0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_adddi3_s8.o)
+ .text.libgcc.fixed
+                0x00000000        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_adddi3_s8.o)
 
 Memory Configuration
 
@@ -167,7 +186,7 @@ END GROUP
 .rela.plt
  *(.rela.plt)
 
-.text           0x00000000       0xb8
+.text           0x00000000      0x24c
  *(.vectors)
  .vectors       0x00000000       0x68 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/../../../../avr/lib/avr5/crtm328p.o
                 0x00000000                __vector_default
@@ -223,7 +242,6 @@ END GROUP
  *(.text)
  .text          0x0000008c        0x4 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/../../../../avr/lib/avr5/crtm328p.o
                 0x0000008c                __vector_22
-                0x0000008c                __vector_1
                 0x0000008c                __vector_24
                 0x0000008c                __vector_12
                 0x0000008c                __bad_interrupt
@@ -233,14 +251,12 @@ END GROUP
                 0x0000008c                __vector_25
                 0x0000008c                __vector_11
                 0x0000008c                __vector_13
-                0x0000008c                __vector_17
                 0x0000008c                __vector_19
                 0x0000008c                __vector_7
                 0x0000008c                __vector_5
                 0x0000008c                __vector_4
                 0x0000008c                __vector_9
                 0x0000008c                __vector_2
-                0x0000008c                __vector_21
                 0x0000008c                __vector_15
                 0x0000008c                __vector_8
                 0x0000008c                __vector_14
@@ -250,16 +266,39 @@ END GROUP
                 0x0000008c                __vector_20
                 0x00000090                . = ALIGN (0x2)
  *(.text.*)
- .text.rainGaugeInit
-                0x00000090       0x1a dataLogger.o
-                0x00000090                rainGaugeInit
- .text.main     0x000000aa        0xa dataLogger.o
-                0x000000aa                main
-                0x000000b4                . = ALIGN (0x2)
+ .text.__vector_1
+                0x00000090       0x7e dataLogger.o
+                0x00000090                __vector_1
+ .text.__vector_21
+                0x0000010e       0x40 dataLogger.o
+                0x0000010e                __vector_21
+ .text.debugLedsInit
+                0x0000014e        0xe dataLogger.o
+                0x0000014e                debugLedsInit
+ .text.raiseOKLed
+                0x0000015c        0x6 dataLogger.o
+                0x0000015c                raiseOKLed
+ .text.raiseWarningLed
+                0x00000162        0x6 dataLogger.o
+                0x00000162                raiseWarningLed
+ .text.spiTransfer
+                0x00000168       0x14 dataLogger.o
+                0x00000168                spiTransfer
+ .text.SDCardInit
+                0x0000017c       0x86 dataLogger.o
+                0x0000017c                SDCardInit
+ .text.__vector_17
+                0x00000202       0x1e dataLogger.o
+                0x00000202                __vector_17
+ .text.main     0x00000220       0x10 dataLogger.o
+                0x00000220                main
+ .text.libgcc   0x00000230       0x18 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_adddi3_s8.o)
+                0x00000230                __adddi3_s8
+                0x00000248                . = ALIGN (0x2)
  *(.fini9)
- .fini9         0x000000b4        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_exit.o)
-                0x000000b4                _exit
-                0x000000b4                exit
+ .fini9         0x00000248        0x0 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_exit.o)
+                0x00000248                _exit
+                0x00000248                exit
  *(.fini9)
  *(.fini8)
  *(.fini8)
@@ -278,11 +317,11 @@ END GROUP
  *(.fini1)
  *(.fini1)
  *(.fini0)
- .fini0         0x000000b4        0x4 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_exit.o)
+ .fini0         0x00000248        0x4 c:/program files (x86)/atmel/atmel toolchain/avr8 gcc/native/3.4.1061/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.8.1/avr5\libgcc.a(_exit.o)
  *(.fini0)
-                0x000000b8                _etext = .
+                0x0000024c                _etext = .
 
-.data           0x00800100        0x0 load address 0x000000b8
+.data           0x00800100        0x0 load address 0x0000024c
                 0x00800100                PROVIDE (__data_start, .)
  *(.data)
  *(.data*)
@@ -293,21 +332,33 @@ END GROUP
                 0x00800100                _edata = .
                 0x00800100                PROVIDE (__data_end, .)
 
-.bss            0x00800100        0x0
+.bss            0x00800100        0xc
                 0x00800100                PROVIDE (__bss_start, .)
  *(.bss)
  *(.bss*)
+ .bss.spiTransferComplete
+                0x00800100        0x1 dataLogger.o
+                0x00800100                spiTransferComplete
+ .bss.conversionComplete
+                0x00800101        0x1 dataLogger.o
+                0x00800101                conversionComplete
+ .bss.tensiometerMeasure
+                0x00800102        0x2 dataLogger.o
+                0x00800102                tensiometerMeasure
+ .bss.pluviometerCounter
+                0x00800104        0x8 dataLogger.o
+                0x00800104                pluviometerCounter
  *(COMMON)
-                0x00800100                PROVIDE (__bss_end, .)
-                0x000000b8                __data_load_start = LOADADDR (.data)
-                0x000000b8                __data_load_end = (__data_load_start + SIZEOF (.data))
+                0x0080010c                PROVIDE (__bss_end, .)
+                0x0000024c                __data_load_start = LOADADDR (.data)
+                0x0000024c                __data_load_end = (__data_load_start + SIZEOF (.data))
 
-.noinit         0x00800060        0x0
-                0x00800060                PROVIDE (__noinit_start, .)
+.noinit         0x0080010c        0x0
+                0x0080010c                PROVIDE (__noinit_start, .)
  *(.noinit*)
-                0x00800060                PROVIDE (__noinit_end, .)
-                0x00800060                _end = .
-                0x00800060                PROVIDE (__heap_start, .)
+                0x0080010c                PROVIDE (__noinit_end, .)
+                0x0080010c                _end = .
+                0x0080010c                PROVIDE (__heap_start, .)
 
 .eeprom         0x00810000        0x0
  *(.eeprom*)
@@ -366,37 +417,38 @@ END GROUP
 .debug_sfnames
  *(.debug_sfnames)
 
-.debug_aranges  0x00000000       0x38
+.debug_aranges  0x00000000       0x80
  *(.debug_aranges)
  .debug_aranges
-                0x00000000       0x38 dataLogger.o
+                0x00000000       0x80 dataLogger.o
 
 .debug_pubnames
  *(.debug_pubnames)
 
-.debug_info     0x00000000       0xf0
+.debug_info     0x00000000      0x30c
  *(.debug_info .gnu.linkonce.wi.*)
- .debug_info    0x00000000       0xf0 dataLogger.o
+ .debug_info    0x00000000      0x30c dataLogger.o
 
-.debug_abbrev   0x00000000       0x85
+.debug_abbrev   0x00000000      0x156
  *(.debug_abbrev)
- .debug_abbrev  0x00000000       0x85 dataLogger.o
+ .debug_abbrev  0x00000000      0x156 dataLogger.o
 
-.debug_line     0x00000000       0xe2
+.debug_line     0x00000000      0x1bb
  *(.debug_line .debug_line.* .debug_line_end)
- .debug_line    0x00000000       0xe2 dataLogger.o
+ .debug_line    0x00000000      0x1bb dataLogger.o
 
-.debug_frame    0x00000000       0x54
+.debug_frame    0x00000000      0x148
  *(.debug_frame)
- .debug_frame   0x00000000       0x54 dataLogger.o
+ .debug_frame   0x00000000      0x148 dataLogger.o
 
-.debug_str      0x00000000      0x18e
+.debug_str      0x00000000      0x252
  *(.debug_str)
- .debug_str     0x00000000      0x18e dataLogger.o
-                                0x1c2 (size before relaxing)
+ .debug_str     0x00000000      0x252 dataLogger.o
+                                0x286 (size before relaxing)
 
-.debug_loc
+.debug_loc      0x00000000      0x1f8
  *(.debug_loc)
+ .debug_loc     0x00000000      0x1f8 dataLogger.o
 
 .debug_macinfo
  *(.debug_macinfo)
@@ -416,9 +468,9 @@ END GROUP
 .debug_pubtypes
  *(.debug_pubtypes)
 
-.debug_ranges   0x00000000       0x28
+.debug_ranges   0x00000000       0x70
  *(.debug_ranges)
- .debug_ranges  0x00000000       0x28 dataLogger.o
+ .debug_ranges  0x00000000       0x70 dataLogger.o
 
 .debug_macro
  *(.debug_macro)
