@@ -52,28 +52,19 @@ void tensiometerInit()
 	// Internal 1.1V Voltage Reference with external capacitor at AREF pin.
 	ADMUX |= (1 << REFS1)|(1 << REFS0);
 	
-	// ADC Conversion Result is right adjusted.
-	ADMUX &= ~(1 << ADLAR);
+	// // ADC Conversion Result is right adjusted. Select channel input ADC0.
+	ADMUX &= ~((1 << ADLAR)|(1 << MUX3)|(1 << MUX2)|(1 << MUX1)|(1 << MUX0));
 	
-	// Select channel input ADC0.
-	ADMUX &= ~((1 << MUX3)|(1 << MUX2)|(1 << MUX1)|(1 << MUX0));
-		
-	// ADC Prescaler of 128.
-	ADCSRA |= (1 << ADPS2)|(1 << ADPS1)|(1 << ADPS0);
+	// ADC Prescaler of 128. ADC Enable. ADC Conversion Complete Interrupt Enable.
+	ADCSRA |= (1 << ADPS2)|(1 << ADPS1)|(1 << ADPS0)|(1 << ADEN)|(1 << ADIE);
 	
 	// Digital Input Disable.
 	DIDR0 |= (1<< ADC5D)|(1<< ADC4D)|(1<< ADC3D)|(1<< ADC2D)|(1<< ADC1D)|(1<< ADC0D);
-	
-	// ADC Enable.
-	ADCSRA |= (1 << ADEN);
-	
-	// ADC Conversion Complete Interrupt Enable.
-	ADCSRA |= (1 << ADIE);
 }
 //-----------------------------------------------------------------------------
 // Single Analog-to-Digital Conversion
 //-----------------------------------------------------------------------------
-void adConversion()
+void adSingleConversion()
 {
 	// ADC Start Conversion.
 	ADCSRA |= (1 << ADSC);
@@ -98,7 +89,7 @@ ISR(ADC_vect)
 void debugLedsInit()
 {
 	// Setting pins as output
-	DDRD  |= (1 << DDD4)|(1 << DDD3);
+	DDRD |= (1 << DDD4)|(1 << DDD3);
 	
 	// Initial state: turned off
 	PORTD |= (1 << PORTD4)|(1 << PORTD3);
@@ -141,14 +132,11 @@ uint8_t spiTransfer(uint8_t byte)
 //-----------------------------------------------------------------------------
 void SDCardInit()
 {
-	// The MSB of the data word is transmitted first.
-	SPCR &= ~(1 << DORD);
+	// The MSB of the data word is transmitted first. SPI mode 0.
+	SPCR &= ~((1 << DORD)|(1 << CPOL)|(1 << CPHA));
 	
 	// Master SPI mode.
 	SPCR |= (1 << MSTR);
-	
-	// SPI mode 0.
-	SPCR &= ~((1 << CPOL)|(1 << CPHA));
 	
 	// CLock rate of 250 Hz (prescaler of 64).
 	SPSR &= ~(1 << SPI2X);
@@ -159,38 +147,72 @@ void SDCardInit()
 	DDRB |= (1<<DDB2)|(1<<DDB3)|(1<<DDB5);
 	DDRB &= ~(1 << DDB4);
 	
-	// SPI Interrupt Enable.
-	SPCR |= (1 << SPIE);
-	
-	// SPI Enable.
-	SPCR |= (1 << SPE);
+	// SPI Interrupt Enable. SPI Enable.
+	SPCR |= (1 << SPIE)|(1 << SPE);
 	
 	// Power on to native SD.
 	PORTB |= (1 << PORTB2);
-	for(int SD_K=0;SD_K<10;SD_K++)
+	for(uint8_t k=0; k < 10; k++)
 		SPDR = 0xFF;
 	
 	// Software reset (CMD0).
-	PORTB &= ~(1 << PORTB2);
-	spiTransfer(0x40);
-	for(uint8_t k = 0; k < 4; k++)
-		spiTransfer(0x00);
-	spiTransfer(0x95);
-	uint8_t R1 = spiTransfer(0xFF);
-	PORTB |= (1 << PORTB2);
-	
-	// DEBUG: check response
-	if(R1 == 0x01) raiseOKLed();
-	else raiseWarningLed();
+	uint8_t R1 = 0;
+	while(!R1)
+	{
+		PORTB &= ~(1 << PORTB2);
+		
+		spiTransfer(0x40);
+		for(uint8_t k = 0; k < 4; k++)
+			spiTransfer(0x00);
+		spiTransfer(0x95);		
+		R1 = spiTransfer(0xFF);
+		
+		PORTB |= (1 << PORTB2);
+	}
 	
 	// Initialization process (CMD1).
-	//PORTB &= ~(1 << PORTB2);
-	//spiTransfer(0x41);
-	//for(uint8_t k = 0; k < 4; k++)
-	//	spiTransfer(0x00);
-	//spiTransfer(0x01);
-	//uint8_t R1 = spiTransfer(0xFF);
-	//PORTB |= (1 << PORTB2);
+	while(R1)
+	{
+		PORTB &= ~(1 << PORTB2);
+		
+		spiTransfer(0x40 + 0x01);
+		for(uint8_t k = 0; k < 4; k++)
+			spiTransfer(0x00);
+		spiTransfer(0x01);
+		R1 = spiTransfer(0xFF);
+		
+		PORTB |= (1 << PORTB2);
+	}
+	
+	// Maximize SPI clock speed (8 MHz, prescaler of 2).
+	SPSR |= (1 << SPI2X);
+	SPCR &= ~((1 << SPR1)|(1 << SPR0));
+}
+//-----------------------------------------------------------------------------
+// Write a single block of 512 bytes
+//-----------------------------------------------------------------------------
+void writeSingleBlock(uint8_t* address, uint8_t* data)
+{
+	PORTB &= ~(1 << PORTB2);
+	
+	// CMD24
+	spiTransfer(0x40 + 0x24);
+	for(uint8_t k = 0; k < 4; k++)
+		spiTransfer(address[k]);
+	spiTransfer(0x00);
+	uint8_t R1 = spiTransfer(0xFF);
+	
+	// Wait 1 byte
+	spiTransfer(0xFF);
+	
+	// Data Packet
+	spiTransfer(0xFE); // Data Token
+	for(uint8_t k = 0; k < 512; k++)
+		spiTransfer(data[k]);
+	spiTransfer(0x00); spiTransfer(0x00); // CRC
+	uint8_t dataResponse = spiTransfer(0xFF);
+	
+	PORTB |= (1 << PORTB2);
 }
 //-----------------------------------------------------------------------------
 // Interrupt Handlers
@@ -200,26 +222,51 @@ ISR(SPI_STC_vect)
 	spiTransferComplete = 1;
 }
 
-/* Hibernate */
+/* Sleep */
 //-----------------------------------------------------------------------------
-// Resources: Timer 1
+// Initialization
+//	Resources: Timer 1
 //-----------------------------------------------------------------------------
-void hibernate(int hours)
+void sleepInit()
+{
+	// Normal port operation, OC1A/OC1B disconnected.
+	TCCR1A &= ~((1 << COM1A1)|(1 << COM1A0)|(1 << COM1B0)|(1 << COM1B0));
+	
+	// Normal mode (counter)
+	TCCR1B &= ~((1 << WGM13)|(1 << WGM12));
+	TCCR1A &= ~((1 << WGM11)|(1 << WGM10));
+	
+	// Input Capture Noise Canceler disabled.
+	TCCR1B &= ~(1 << ICNC1);
+	
+	// Set clock prescaler to 1024 (15.625 kHz, or T = 64 ms).
+	TCCR1B |= (1 << CS12)|(1 << CS10);
+	TCCR1B &= ~(1 << CS11);
+	
+	// Input Capture, Output Compare B/A Match Interrupts disabled.
+	TIMSK1 &= ~((1 << ICIE1)|(1 << OCIE1B)|(1 << OCIE1A));
+	
+	// Timer1 Overflow Interrupt Enable.
+	TIMSK1 |= (1 << TOIE1);
+}
+void sleep(int hours)
 {
 	
 }
 
+
 /* Main */
 int main()
 {
-	// DEBUG: check SDCardInit() with CMD0
-	
 	// Initialization
-	//pluviometerInit();
-	//tensiometerInit();
+	pluviometerInit();
+	tensiometerInit();
 	debugLedsInit();
 	SDCardInit();
+	sleepInit();
 	sei();
+	
+	
 	
 	return 0;
 };
