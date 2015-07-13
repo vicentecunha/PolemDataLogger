@@ -1,7 +1,7 @@
 //-----------------------------------------------------------------------------
 // POLEM DataLogger
 //	Author: Vicente Cunha
-//	Date: june 2015
+//	Date: july 2015
 //	License: --
 //-----------------------------------------------------------------------------
 #include <avr/interrupt.h>
@@ -22,8 +22,7 @@ void pluviometerConfig()
 	MCUCR &= ~(1 << PUD);
 	
 	// The falling edge of INT0 generates an interrupt request.
-	EICRA |=  (1 << ISC01);
-	EICRA &= ~(1 << ISC00);
+	EICRA |=  (1 << ISC01); EICRA &= ~(1 << ISC00);
 }
 //-----------------------------------------------------------------------------
 // Enable
@@ -45,8 +44,7 @@ ISR(INT0_vect)
 //-----------------------------------------------------------------------------
 // Global Variables
 //-----------------------------------------------------------------------------
-uint16_t tensiometerMeasure = 0;
-uint8_t conversionComplete = 0;
+uint8_t adConversionComplete = 0;
 //-----------------------------------------------------------------------------
 // Configuration
 //-----------------------------------------------------------------------------
@@ -83,57 +81,30 @@ void tensiometerDisable()
 //-----------------------------------------------------------------------------
 // Single Analog-to-Digital Conversion
 //-----------------------------------------------------------------------------
-void adSingleConversion()
+uint16_t tensiometerSingleConversion()
 {
 	// ADC Start Conversion.
 	ADCSRA |= (1 << ADSC);
 	
 	// Wait conversion.
-	conversionComplete = 0;
-	while(!conversionComplete);
+	adConversionComplete = 0;
+	while(!adConversionComplete);
+	
+	return((ADCH << 8) + ADCL);
 }
 //-----------------------------------------------------------------------------
 // Interrupt Handlers
 //-----------------------------------------------------------------------------
 ISR(ADC_vect)
 {
-	tensiometerMeasure = (ADCH << 8) + ADCL;
-	conversionComplete = 1;
+	adConversionComplete = 1;
 }
-
-/* Debug Leds, Resources: IO pins 3 and 4 */
-//-----------------------------------------------------------------------------
-// Configuration
-//-----------------------------------------------------------------------------
-void debugLedsConfig()
-{
-	// Setting pins as output
-	DDRD |= (1 << DDD4)|(1 << DDD3);
-	
-	// Initial state: turned off
-	PORTD |= (1 << PORTD4)|(1 << PORTD3);
-}
-//-----------------------------------------------------------------------------
-// OK (green) LED
-//-----------------------------------------------------------------------------
-void raiseOKLed()
-{
-	PORTD |=  (1 << PORTD4);
-	PORTD &= ~(1 << PORTD3);
-};
-//-----------------------------------------------------------------------------
-// Warning (red) LED
-//-----------------------------------------------------------------------------
-void raiseWarningLed()
-{
-	PORTD &= ~(1 << PORTD4);
-	PORTD |=  (1 << PORTD3);
-};
 
 /* SD Card, Resources: SPI - Serial Peripheral Interface */
 //-----------------------------------------------------------------------------
 // Global Variables
 //-----------------------------------------------------------------------------
+const uint8_t CRC = 0x95;
 uint8_t spiTransferComplete = 0;
 //-----------------------------------------------------------------------------
 // Config
@@ -147,13 +118,11 @@ void SDCardConfig()
 	SPCR |= (1 << MSTR);
 	
 	// Pin configurations.
-	DDRB |= (1<<DDB2)|(1<<DDB3)|(1<<DDB5);
-	DDRB &= ~(1 << DDB4);
+	DDRB |= (1<<DDB2)|(1<<DDB3)|(1<<DDB5); DDRB &= ~(1 << DDB4);
 	
 	// CLock rate of 250 Hz (prescaler of 64).
 	SPSR &= ~(1 << SPI2X);
-	SPCR |=  (1 << SPR1);
-	SPCR &= ~(1 << SPR0);
+	SPCR |=  (1 << SPR1); SPCR &= ~(1 << SPR0);
 }
 //-----------------------------------------------------------------------------
 // Send byte to MOSI line, wait transmission, and return received byte by MISO
@@ -195,8 +164,7 @@ void SDCardInit()
 {
 	// Power on to native SD.
 	PORTB |= (1 << PORTB2);
-	for(uint8_t k=0; k < 10; k++)
-		SPDR = 0xFF;
+	for(uint8_t k=0; k < 10; k++) spiTransfer(0xFF);
 	
 	// Software reset (CMD0).
 	uint8_t R1 = 0;
@@ -205,9 +173,8 @@ void SDCardInit()
 		PORTB &= ~(1 << PORTB2);
 		
 		spiTransfer(0x40);
-		for(uint8_t k = 0; k < 4; k++)
-			spiTransfer(0x00);
-		spiTransfer(0x95);		
+		for(uint8_t k = 0; k < 4; k++) spiTransfer(0x00);
+		spiTransfer(CRC);		
 		R1 = spiTransfer(0xFF);
 		
 		PORTB |= (1 << PORTB2);
@@ -219,30 +186,24 @@ void SDCardInit()
 		PORTB &= ~(1 << PORTB2);
 		
 		spiTransfer(0x40 + 0x01);
-		for(uint8_t k = 0; k < 4; k++)
-			spiTransfer(0x00);
-		spiTransfer(0x01);
+		for(uint8_t k = 0; k < 4; k++) spiTransfer(0x00);
+		spiTransfer(CRC);
 		R1 = spiTransfer(0xFF);
 		
 		PORTB |= (1 << PORTB2);
 	}
-	
-	//// Maximize SPI clock speed (8 MHz, prescaler of 2).
-	//SPSR |= (1 << SPI2X);
-	//SPCR &= ~((1 << SPR1)|(1 << SPR0));
 }
 //-----------------------------------------------------------------------------
 // Write a single block of 512 bytes
 //-----------------------------------------------------------------------------
-void writeSingleBlock(uint8_t* address, uint8_t* data)
+void SDCardWriteSingleBlock(uint8_t* address, uint8_t* data)
 {
 	PORTB &= ~(1 << PORTB2);
 	
 	// CMD24
 	spiTransfer(0x40 + 0x24);
-	for(uint8_t k = 0; k < 4; k++)
-		spiTransfer(address[k]);
-	spiTransfer(0x00);
+	for(uint8_t k = 0; k < 4; k++) spiTransfer(address[k]);
+	spiTransfer(CRC);
 	uint8_t R1 = spiTransfer(0xFF);
 	
 	// Wait 1 byte
@@ -250,9 +211,8 @@ void writeSingleBlock(uint8_t* address, uint8_t* data)
 	
 	// Data Packet
 	spiTransfer(0xFE); // Data Token
-	for(uint8_t k = 0; k < 512; k++)
-		spiTransfer(data[k]);
-	spiTransfer(0x00); spiTransfer(0x00); // CRC
+	for(uint8_t k = 0; k < 512; k++) spiTransfer(data[k]);
+	spiTransfer(CRC); spiTransfer(CRC);
 	uint8_t dataResponse = spiTransfer(0xFF);
 	
 	PORTB |= (1 << PORTB2);
@@ -262,7 +222,7 @@ void writeSingleBlock(uint8_t* address, uint8_t* data)
 //-----------------------------------------------------------------------------
 // Global Variables
 //-----------------------------------------------------------------------------
-uint64_t ovfCounter = 0;
+uint8_t sleepComplete = 0;
 //-----------------------------------------------------------------------------
 // Configuration
 //-----------------------------------------------------------------------------
@@ -285,61 +245,87 @@ void sleepConfig()
 	TIMSK1 |= (1 << TOIE1);
 }
 //-----------------------------------------------------------------------------
-// Start counter
-//-----------------------------------------------------------------------------
-void sleepStartCounter()
-{
-	// Set clock prescaler to 1024 (15.625 kHz, or T = 64 ms).
-	TCCR1B |= (1 << CS12)|(1 << CS10);
-	TCCR1B &= ~(1 << CS11);
-}
-//-----------------------------------------------------------------------------
-// Stop counter
-//-----------------------------------------------------------------------------
-void sleepStopCounter()
-{
-	TCCR1B &= ~((1 << CS12)|(1 << CS11)|(1 << CS10));
-}
-//-----------------------------------------------------------------------------
 // Sleep
 //-----------------------------------------------------------------------------
-void sleep(int hours)
+void sleep()
 {
-	//TODO
+	sleepComplete = 0;
+	
+	// Reset counter.
+	TCNT1H = 0x00; TCNT1L = 0x00;
+	
+	// Start counter, prescaler to 1024 (15.625 kHz, or T = 64 ms).
+	TCCR1B |= (1 << CS12)|(1 << CS10); TCCR1B &= ~(1 << CS11);
+	
+	// To OVF, with T = 64 ms, it takes 65536*64 ms = 4194.304 s = 69.9051 min.
+	while(!sleepComplete);
+	
+	// Stop counter.
+	TCCR1B &= ~((1 << CS12)|(1 << CS11)|(1 << CS10));
 }
 //-----------------------------------------------------------------------------
 // Interrupt Handlers
 //-----------------------------------------------------------------------------
 ISR(TIMER1_OVF_vect)
 {
-	ovfCounter++;
+	sleepComplete = 1;
 }
 
 /* Main */
 int main()
 {
-	// Initialization
-	pluviometerConfig();
-	pluviometerEnable();
-	
-	tensiometerConfig();
-	tensiometerEnable();
-	
-	debugLedsConfig();
-	sleepConfig();
-	
-	SDCardConfig();
-	SDCardEnable();
-	SDCardInit();
-	
 	sei();
 	
-	//TODO: main loop
-	//1) capture data
-	//2) write a data block
-	//3) disable tensiometer and SD Card
-	//4) sleep
-	//5) enable tensiometer and SD Card
+	// Initialization
+	pluviometerConfig(); pluviometerEnable();	
+	tensiometerConfig(); tensiometerEnable();	
+	SDCardConfig(); SDCardEnable(); SDCardInit();
+	sleepConfig();
 	
+	uint32_t currentBlockAddress = 0;
+	uint8_t SDCardBlockAddress[4];
+	uint8_t SDCardDataBlock[512];
+	
+	for(uint8_t k = 12; k < 512; k++)
+	{
+		SDCardDataBlock[k] = 0x00;
+	}
+	
+	while(1)
+	{
+		// Pluviometer
+		SDCardDataBlock[0] = (pluviometerCounter >> 56);
+		SDCardDataBlock[1] = (pluviometerCounter >> 48);
+		SDCardDataBlock[2] = (pluviometerCounter >> 40);
+		SDCardDataBlock[3] = (pluviometerCounter >> 32);
+		SDCardDataBlock[4] = (pluviometerCounter >> 24);
+		SDCardDataBlock[5] = (pluviometerCounter >> 16);
+		SDCardDataBlock[6] = (pluviometerCounter >> 8);
+		SDCardDataBlock[7] = (pluviometerCounter >> 0);
+		SDCardDataBlock[8] = 0x00;
+		
+		// Tensiometer
+		uint16_t tensiometerMeasure = tensiometerSingleConversion();
+		
+		SDCardDataBlock[9] = (tensiometerMeasure >> 8);
+		SDCardDataBlock[10] = (tensiometerMeasure >> 0);
+		SDCardDataBlock[11] = 0x00;
+		
+		// Increment block address
+		currentBlockAddress++;
+		SDCardBlockAddress[0] = (currentBlockAddress >> 24);
+		SDCardBlockAddress[1] = (currentBlockAddress >> 16);
+		SDCardBlockAddress[2] = (currentBlockAddress >> 8);
+		SDCardBlockAddress[3] = (currentBlockAddress >> 0);
+		
+		// Write Data Block
+		SDCardWriteSingleBlock(SDCardBlockAddress, SDCardDataBlock);
+		
+		// Sleep
+		tensiometerDisable(); SDCardDisable();
+		sleep();
+		tensiometerEnable(); SDCardEnable();
+	}
+
 	return 0;
 };
