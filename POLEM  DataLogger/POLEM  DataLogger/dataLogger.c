@@ -56,7 +56,7 @@ void tensiometerConfig()
 	// // ADC Conversion Result is right adjusted. Select channel input ADC0
 	ADMUX &= ~((1 << ADLAR)|(1 << MUX3)|(1 << MUX2)|(1 << MUX1)|(1 << MUX0));
 	
-	// ADC Prescaler of 128. 
+	// ADC Prescaler of 128
 	ADCSRA |= (1 << ADPS2)|(1 << ADPS1)|(1 << ADPS0);
 	
 	// Digital Input Disable
