@@ -9,7 +9,7 @@
 /* DEBUG: USART */
 void usartInit()
 {
-	UBRR0L = 103; // 9660 bps
+	UBRR0L = 103; // 9600 bps
 	UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);	// Dados de 8 bits
 	UCSR0B = (1<<RXEN0)|(1<<TXEN0);
 }
