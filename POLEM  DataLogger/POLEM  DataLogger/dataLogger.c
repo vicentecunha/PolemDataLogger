@@ -6,6 +6,23 @@
 //-----------------------------------------------------------------------------
 #include <avr/interrupt.h>
 
+/* DEBUG: USART */
+void usartInit(){
+	UBRR0L = 103; // 9660 bps
+	UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);	// Dados de 8 bits
+	UCSR0B = (1<<RXEN0)|(1<<TXEN0);
+}
+
+unsigned char usartReceive(){
+	while(!(UCSR0A & (1<<RXC0))){};
+	return(UDR0);
+}
+
+void usartTransmit(unsigned char data){
+	while(!(UCSR0A & (1<<UDRE0))){};
+	UDR0 = data;
+}
+
 /* Pluviometer, Resources: external interrupt 0 (INT0) */
 //-----------------------------------------------------------------------------
 // Global Variables
@@ -105,7 +122,6 @@ ISR(ADC_vect)
 // Global Variables
 //-----------------------------------------------------------------------------
 const uint8_t CRC = 0x95;
-uint8_t spiTransferComplete = 0;
 //-----------------------------------------------------------------------------
 // Config
 //-----------------------------------------------------------------------------
@@ -117,7 +133,13 @@ void SDCardConfig()
 	// Master SPI mode
 	SPCR |= (1 << MSTR);
 	
-	// Pin configurations
+	// SPI bus pins configurations
+	/*
+		SCK:  pin 13 (PB5)
+		MISO: pin 12 (PB4)
+		MOSI: pin 11 (PB3)
+		SS:   pin 10 (PB2)
+	*/
 	DDRB |= (1<<DDB2)|(1<<DDB3)|(1<<DDB5); DDRB &= ~(1 << DDB4);
 	
 	// CLock rate of 250 Hz (prescaler of 64)
@@ -129,69 +151,71 @@ void SDCardConfig()
 //-----------------------------------------------------------------------------
 uint8_t spiTransfer(uint8_t byte)
 {
-	spiTransferComplete = 0;
 	SPDR = byte;
-	while(!spiTransferComplete);
+	while(!(SPSR & (1 << SPIF)));
 	return SPDR;
-}
-//-----------------------------------------------------------------------------
-// Interrupt Handlers
-//-----------------------------------------------------------------------------
-ISR(SPI_STC_vect)
-{
-	spiTransferComplete = 1;
 }
 //-----------------------------------------------------------------------------
 // Enable
 //-----------------------------------------------------------------------------
 void SDCardEnable()
 {
-	// SPI Interrupt Enable. SPI Enable.
-	SPCR |= (1 << SPIE)|(1 << SPE);
+	SPCR |= (1 << SPE);
 }
 //-----------------------------------------------------------------------------
 // Disable
 //-----------------------------------------------------------------------------
 void SDCardDisable()
 {
-	// SPI Interrupt Disable. SPI Disable.
-	SPCR &= ~((1 << SPIE)|(1 << SPE));
+	SPCR &= ~(1 << SPE);
 }
 //-----------------------------------------------------------------------------
 // Initialization
 //-----------------------------------------------------------------------------
 void SDCardInit()
 {
+	usartTransmit('0');
+	
 	// Power on to native SD
 	PORTB |= (1 << PORTB2);
 	for(uint8_t k=0; k < 10; k++) spiTransfer(0xFF);
 	
+	usartTransmit('1');
+		
 	// Software reset (CMD0)
+	PORTB &= ~(1 << PORTB2);
+		
+	spiTransfer(0x40);
+	for(uint8_t k = 0; k < 4; k++) spiTransfer(0x00);
+	spiTransfer(CRC);
+	
 	uint8_t R1 = 0;
 	while(!R1)
 	{
-		PORTB &= ~(1 << PORTB2);
-		
-		spiTransfer(0x40);
-		for(uint8_t k = 0; k < 4; k++) spiTransfer(0x00);
-		spiTransfer(CRC);		
 		R1 = spiTransfer(0xFF);
-		
-		PORTB |= (1 << PORTB2);
+		usartTransmit(R1);
 	}
 	
+	PORTB |= (1 << PORTB2);	
+	
+	usartTransmit('2');
+	
 	// Initialization process (CMD1)
+	PORTB &= ~(1 << PORTB2);
+	
+	spiTransfer(0x40 + 0x01);
+	for(uint8_t k = 0; k < 4; k++) spiTransfer(0x00);
+	spiTransfer(CRC);
+	
 	while(R1)
 	{
-		PORTB &= ~(1 << PORTB2);
-		
-		spiTransfer(0x40 + 0x01);
-		for(uint8_t k = 0; k < 4; k++) spiTransfer(0x00);
-		spiTransfer(CRC);
 		R1 = spiTransfer(0xFF);
-		
-		PORTB |= (1 << PORTB2);
+		usartTransmit(R1);
 	}
+	
+	PORTB |= (1 << PORTB2);
+	
+	usartTransmit('3');
 }
 //-----------------------------------------------------------------------------
 // Write a single block of 512 bytes
@@ -276,9 +300,12 @@ int main()
 {
 	sei();
 	
+	// DEBUG
+	usartInit();
+	
 	// Initialization
-	pluviometerConfig(); pluviometerEnable();	
-	tensiometerConfig(); tensiometerEnable();	
+	pluviometerConfig(); pluviometerEnable();
+	tensiometerConfig(); tensiometerEnable();
 	SDCardConfig(); SDCardEnable(); SDCardInit();
 	sleepConfig();
 	
@@ -293,26 +320,39 @@ int main()
 	
 	while(1)
 	{
-		// Pluviometer
-		SDCardDataBlock[0] = (pluviometerCounter >> 56);
-		SDCardDataBlock[1] = (pluviometerCounter >> 48);
-		SDCardDataBlock[2] = (pluviometerCounter >> 40);
-		SDCardDataBlock[3] = (pluviometerCounter >> 32);
-		SDCardDataBlock[4] = (pluviometerCounter >> 24);
-		SDCardDataBlock[5] = (pluviometerCounter >> 16);
-		SDCardDataBlock[6] = (pluviometerCounter >> 8);
-		SDCardDataBlock[7] = (pluviometerCounter >> 0);
-		SDCardDataBlock[8] = 0x00;
+		// DEBUG: Hello World!
+		SDCardDataBlock[0] = 'H';
+		SDCardDataBlock[1] = 'e';
+		SDCardDataBlock[2] = 'l';
+		SDCardDataBlock[3] = 'l';
+		SDCardDataBlock[4] = 'o';
+		SDCardDataBlock[5] = ' ';
+		SDCardDataBlock[6] = 'W';
+		SDCardDataBlock[7] = 'o';
+		SDCardDataBlock[8] = 'r';
+		SDCardDataBlock[9] = 'l';
+		SDCardDataBlock[10] = 'd';
+		SDCardDataBlock[11] = '!';
 		
-		// Tensiometer
-		uint16_t tensiometerMeasure = tensiometerSingleConversion();
+		//// Pluviometer
+		//SDCardDataBlock[0] = (pluviometerCounter >> 56);
+		//SDCardDataBlock[1] = (pluviometerCounter >> 48);
+		//SDCardDataBlock[2] = (pluviometerCounter >> 40);
+		//SDCardDataBlock[3] = (pluviometerCounter >> 32);
+		//SDCardDataBlock[4] = (pluviometerCounter >> 24);
+		//SDCardDataBlock[5] = (pluviometerCounter >> 16);
+		//SDCardDataBlock[6] = (pluviometerCounter >> 8);
+		//SDCardDataBlock[7] = (pluviometerCounter >> 0);
+		//SDCardDataBlock[8] = 0x00;
+		//
+		//// Tensiometer
+		//uint16_t tensiometerMeasure = tensiometerSingleConversion();
+		//
+		//SDCardDataBlock[9] = (tensiometerMeasure >> 8);
+		//SDCardDataBlock[10] = (tensiometerMeasure >> 0);
+		//SDCardDataBlock[11] = 0x00;
 		
-		SDCardDataBlock[9] = (tensiometerMeasure >> 8);
-		SDCardDataBlock[10] = (tensiometerMeasure >> 0);
-		SDCardDataBlock[11] = 0x00;
-		
-		// Increment block address
-		currentBlockAddress++;
+		// Block Address
 		SDCardBlockAddress[0] = (currentBlockAddress >> 24);
 		SDCardBlockAddress[1] = (currentBlockAddress >> 16);
 		SDCardBlockAddress[2] = (currentBlockAddress >> 8);
@@ -320,6 +360,9 @@ int main()
 		
 		// Write Data Block
 		SDCardWriteSingleBlock(SDCardBlockAddress, SDCardDataBlock);
+		
+		// Increment Block Address
+		currentBlockAddress++;
 		
 		// Sleep
 		tensiometerDisable(); SDCardDisable();
