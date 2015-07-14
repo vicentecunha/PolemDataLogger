@@ -7,18 +7,21 @@
 #include <avr/interrupt.h>
 
 /* DEBUG: USART */
-void usartInit(){
+void usartInit()
+{
 	UBRR0L = 103; // 9660 bps
 	UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);	// Dados de 8 bits
 	UCSR0B = (1<<RXEN0)|(1<<TXEN0);
 }
 
-unsigned char usartReceive(){
+unsigned char usartReceive()
+{
 	while(!(UCSR0A & (1 << RXC0)));
 	return(UDR0);
 }
 
-void usartTransmit(unsigned char data){
+void usartTransmit(unsigned char data)
+{
 	while(!(UCSR0A & (1 << UDRE0)));
 	UDR0 = data;
 }
