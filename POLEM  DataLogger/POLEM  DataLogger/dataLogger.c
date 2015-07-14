@@ -14,12 +14,12 @@ void usartInit(){
 }
 
 unsigned char usartReceive(){
-	while(!(UCSR0A & (1<<RXC0))){};
+	while(!(UCSR0A & (1 << RXC0)));
 	return(UDR0);
 }
 
 void usartTransmit(unsigned char data){
-	while(!(UCSR0A & (1<<UDRE0))){};
+	while(!(UCSR0A & (1 << UDRE0)));
 	UDR0 = data;
 }
 
@@ -36,17 +36,15 @@ void pluviometerConfig()
 	// PD2 is input with pull-up
 	DDRD  &= ~(1 << DDD2);
 	PORTD |= (1 << PORTD2);
-	MCUCR &= ~(1 << PUD);
-	
+	MCUCR &= ~(1 << PUD);	
 	// The falling edge of INT0 generates an interrupt request
 	EICRA |=  (1 << ISC01); EICRA &= ~(1 << ISC00);
 }
 //-----------------------------------------------------------------------------
-// Enable
+// External Interrupt 0 Enable
 //-----------------------------------------------------------------------------
-void pluviometerEnable()
+void pluviometerInterruptEnable()
 {	
-	// External Interrupt Request 0 Enable
 	EIMSK |= (1 << INT0);
 }
 //-----------------------------------------------------------------------------
@@ -59,23 +57,16 @@ ISR(INT0_vect)
 
 /* Tensiometer, Resources: Analog-to-Digital Converter */
 //-----------------------------------------------------------------------------
-// Global Variables
-//-----------------------------------------------------------------------------
-uint8_t adConversionComplete = 0;
-//-----------------------------------------------------------------------------
 // Configuration
 //-----------------------------------------------------------------------------
 void tensiometerConfig()
 {
 	// Internal 1.1V Voltage Reference with external capacitor at AREF pin
-	ADMUX |= (1 << REFS1)|(1 << REFS0);
-	
+	ADMUX |= (1 << REFS1)|(1 << REFS0);	
 	// // ADC Conversion Result is right adjusted. Select channel input ADC0
-	ADMUX &= ~((1 << ADLAR)|(1 << MUX3)|(1 << MUX2)|(1 << MUX1)|(1 << MUX0));
-	
+	ADMUX &= ~((1 << ADLAR)|(1 << MUX3)|(1 << MUX2)|(1 << MUX1)|(1 << MUX0));	
 	// ADC Prescaler of 128
-	ADCSRA |= (1 << ADPS2)|(1 << ADPS1)|(1 << ADPS0);
-	
+	ADCSRA |= (1 << ADPS2)|(1 << ADPS1)|(1 << ADPS0);	
 	// Digital Input Disable
 	DIDR0 |= (1<< ADC5D)|(1<< ADC4D)|(1<< ADC3D)|(1<< ADC2D)|(1<< ADC1D)|(1<< ADC0D);
 }
@@ -85,36 +76,23 @@ void tensiometerConfig()
 void tensiometerEnable()
 {
 	// ADC Enable. ADC Conversion Complete Interrupt Enable
-	ADCSRA |= (1 << ADEN)|(1 << ADIE);
+	ADCSRA |= (1 << ADEN);
 }
 //-----------------------------------------------------------------------------
 // Disable
 //-----------------------------------------------------------------------------
 void tensiometerDisable()
 {
-	// ADC Disable. ADC Conversion Complete Interrupt Disable
-	ADCSRA &= ~((1 << ADEN)|(1 << ADIE));
+	ADCSRA &= ~(1 << ADEN);
 }
 //-----------------------------------------------------------------------------
 // Single Analog-to-Digital Conversion
 //-----------------------------------------------------------------------------
 uint16_t tensiometerSingleConversion()
 {
-	// ADC Start Conversion
-	ADCSRA |= (1 << ADSC);
-	
-	// Wait conversion
-	adConversionComplete = 0;
-	while(!adConversionComplete);
-	
+	ADCSRA |= (1 << ADSC); // ADC Start Conversion
+	while(!(ADCSRA & (1 << ADIF))); // Wait conversion
 	return((ADCH << 8) + ADCL);
-}
-//-----------------------------------------------------------------------------
-// Interrupt Handlers
-//-----------------------------------------------------------------------------
-ISR(ADC_vect)
-{
-	adConversionComplete = 1;
 }
 
 /* SD Card, Resources: SPI - Serial Peripheral Interface */
@@ -129,10 +107,8 @@ void SDCardConfig()
 {
 	// The MSB of the data word is transmitted first. SPI mode 0.
 	SPCR &= ~((1 << DORD)|(1 << CPOL)|(1 << CPHA));
-	
 	// Master SPI mode
-	SPCR |= (1 << MSTR);
-	
+	SPCR |= (1 << MSTR);	
 	// SPI bus pins configurations
 	/*
 		SCK:  pin 13 (PB5)
@@ -140,8 +116,7 @@ void SDCardConfig()
 		MOSI: pin 11 (PB3)
 		SS:   pin 10 (PB2)
 	*/
-	DDRB |= (1<<DDB2)|(1<<DDB3)|(1<<DDB5); DDRB &= ~(1 << DDB4);
-	
+	DDRB |= (1<<DDB2)|(1<<DDB3)|(1<<DDB5); DDRB &= ~(1 << DDB4);	
 	// CLock rate of 250 Hz (prescaler of 64)
 	SPSR &= ~(1 << SPI2X);
 	SPCR |=  (1 << SPR1); SPCR &= ~(1 << SPR0);
@@ -230,6 +205,8 @@ void SDCardWriteSingleBlock(uint8_t* address, uint8_t* data)
 	spiTransfer(CRC);
 	uint8_t R1 = spiTransfer(0xFF);
 	
+	usartTransmit(R1);
+	
 	// Wait 1 byte
 	spiTransfer(0xFF);
 	
@@ -239,14 +216,12 @@ void SDCardWriteSingleBlock(uint8_t* address, uint8_t* data)
 	spiTransfer(CRC); spiTransfer(CRC);
 	uint8_t dataResponse = spiTransfer(0xFF);
 	
+	usartTransmit(dataResponse);
+	
 	PORTB |= (1 << PORTB2);
 }
 
 /* Sleep, Resources: Timer 1 */
-//-----------------------------------------------------------------------------
-// Global Variables
-//-----------------------------------------------------------------------------
-uint8_t sleepComplete = 0;
 //-----------------------------------------------------------------------------
 // Configuration
 //-----------------------------------------------------------------------------
@@ -254,57 +229,41 @@ void sleepConfig()
 {
 	// Normal port operation, OC1A/OC1B disconnected
 	TCCR1A &= ~((1 << COM1A1)|(1 << COM1A0)|(1 << COM1B0)|(1 << COM1B0));
-	
 	// Normal mode (counter)
 	TCCR1B &= ~((1 << WGM13)|(1 << WGM12));
-	TCCR1A &= ~((1 << WGM11)|(1 << WGM10));
-	
+	TCCR1A &= ~((1 << WGM11)|(1 << WGM10));	
 	// Input Capture Noise Canceler disabled
-	TCCR1B &= ~(1 << ICNC1);
-	
+	TCCR1B &= ~(1 << ICNC1);	
 	// Input Capture, Output Compare B/A Match Interrupts disabled
-	TIMSK1 &= ~((1 << ICIE1)|(1 << OCIE1B)|(1 << OCIE1A));
-	
+	TIMSK1 &= ~((1 << ICIE1)|(1 << OCIE1B)|(1 << OCIE1A));	
 	// Timer1 Overflow Interrupt Enable
 	TIMSK1 |= (1 << TOIE1);
 }
 //-----------------------------------------------------------------------------
-// Sleep
+// Sleep for one hour
 //-----------------------------------------------------------------------------
-void sleep()
+void sleepOneHour()
 {
-	sleepComplete = 0;
-	
 	// Reset counter
-	TCNT1H = 0x00; TCNT1L = 0x00;
-	
+	TCNT1H = 0x00; TCNT1L = 0x00;	
+	// To sleep for 1 hour, with T = 64 ms, it takes 56250 (0xDBBA) counts
+	OCR1AH = 0xDB; OCR1AL = 0xBA;	
 	// Start counter, prescaler to 1024 (15.625 kHz, or T = 64 ms)
 	TCCR1B |= (1 << CS12)|(1 << CS10); TCCR1B &= ~(1 << CS11);
-	
-	// To OVF, with T = 64 ms, it takes 65536*64 ms = 4194.304 s = 69.9051 min
-	while(!sleepComplete);
-	
+	// Wait for compare match A
+	while(!(TIFR1 & (1 << OCF1A)));	
 	// Stop counter
 	TCCR1B &= ~((1 << CS12)|(1 << CS11)|(1 << CS10));
-}
-//-----------------------------------------------------------------------------
-// Interrupt Handlers
-//-----------------------------------------------------------------------------
-ISR(TIMER1_OVF_vect)
-{
-	sleepComplete = 1;
 }
 
 /* Main */
 int main()
 {
-	sei();
-	
 	// DEBUG
 	usartInit();
 	
 	// Initialization
-	pluviometerConfig(); pluviometerEnable();
+	pluviometerConfig(); pluviometerInterruptEnable(); sei();
 	tensiometerConfig(); tensiometerEnable();
 	SDCardConfig(); SDCardEnable(); SDCardInit();
 	sleepConfig();
@@ -366,7 +325,7 @@ int main()
 		
 		// Sleep
 		tensiometerDisable(); SDCardDisable();
-		sleep();
+		sleepOneHour();
 		tensiometerEnable(); SDCardEnable();
 	}
 
