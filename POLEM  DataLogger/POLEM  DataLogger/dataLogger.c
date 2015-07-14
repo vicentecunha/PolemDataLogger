@@ -48,7 +48,7 @@ void pluviometerInterruptEnable()
 	EIMSK |= (1 << INT0);
 }
 //-----------------------------------------------------------------------------
-// Interrupt Handlers
+// External Interrupt 0 Handler
 //-----------------------------------------------------------------------------
 ISR(INT0_vect)
 {
@@ -71,15 +71,14 @@ void tensiometerConfig()
 	DIDR0 |= (1<< ADC5D)|(1<< ADC4D)|(1<< ADC3D)|(1<< ADC2D)|(1<< ADC1D)|(1<< ADC0D);
 }
 //-----------------------------------------------------------------------------
-// Enable
+// ADC Enable
 //-----------------------------------------------------------------------------
 void tensiometerEnable()
 {
-	// ADC Enable. ADC Conversion Complete Interrupt Enable
 	ADCSRA |= (1 << ADEN);
 }
 //-----------------------------------------------------------------------------
-// Disable
+// ADC Disable
 //-----------------------------------------------------------------------------
 void tensiometerDisable()
 {
@@ -97,19 +96,19 @@ uint16_t tensiometerSingleConversion()
 
 /* SD Card, Resources: SPI - Serial Peripheral Interface */
 //-----------------------------------------------------------------------------
-// Global Variables
+// Constant CRC value used, corresponding to CMD0
 //-----------------------------------------------------------------------------
 const uint8_t CRC = 0x95;
 //-----------------------------------------------------------------------------
-// Config
+// SPI Bus Configuration
 //-----------------------------------------------------------------------------
-void SDCardConfig()
+void SPIConfig()
 {
 	// The MSB of the data word is transmitted first. SPI mode 0.
 	SPCR &= ~((1 << DORD)|(1 << CPOL)|(1 << CPHA));
 	// Master SPI mode
 	SPCR |= (1 << MSTR);	
-	// SPI bus pins configurations
+	// SPI bus pins configuration
 	/*
 		SCK:  pin 13 (PB5)
 		MISO: pin 12 (PB4)
@@ -124,28 +123,28 @@ void SDCardConfig()
 //-----------------------------------------------------------------------------
 // Send byte to MOSI line, wait transmission, and return received byte by MISO
 //-----------------------------------------------------------------------------
-uint8_t spiTransfer(uint8_t byte)
+uint8_t SPITransfer(uint8_t byte)
 {
 	SPDR = byte;
 	while(!(SPSR & (1 << SPIF)));
 	return SPDR;
 }
 //-----------------------------------------------------------------------------
-// Enable
+// SPI Bus Enable
 //-----------------------------------------------------------------------------
 void SDCardEnable()
 {
 	SPCR |= (1 << SPE);
 }
 //-----------------------------------------------------------------------------
-// Disable
+// SPI Bus Disable
 //-----------------------------------------------------------------------------
 void SDCardDisable()
 {
 	SPCR &= ~(1 << SPE);
 }
 //-----------------------------------------------------------------------------
-// Initialization
+// SD Card Initialization
 //-----------------------------------------------------------------------------
 void SDCardInit()
 {
@@ -153,21 +152,21 @@ void SDCardInit()
 	
 	// Power on to native SD
 	PORTB |= (1 << PORTB2);
-	for(uint8_t k=0; k < 10; k++) spiTransfer(0xFF);
+	for(uint8_t k=0; k < 10; k++) SPITransfer(0xFF);
 	
 	usartTransmit('1');
 		
 	// Software reset (CMD0)
 	PORTB &= ~(1 << PORTB2);
 		
-	spiTransfer(0x40);
-	for(uint8_t k = 0; k < 4; k++) spiTransfer(0x00);
-	spiTransfer(CRC);
+	SPITransfer(0x40);
+	for(uint8_t k = 0; k < 4; k++) SPITransfer(0x00);
+	SPITransfer(CRC);
 	
 	uint8_t R1 = 0;
 	while(!R1)
 	{
-		R1 = spiTransfer(0xFF);
+		R1 = SPITransfer(0xFF);
 		usartTransmit(R1);
 	}
 	
@@ -178,13 +177,13 @@ void SDCardInit()
 	// Initialization process (CMD1)
 	PORTB &= ~(1 << PORTB2);
 	
-	spiTransfer(0x40 + 0x01);
-	for(uint8_t k = 0; k < 4; k++) spiTransfer(0x00);
-	spiTransfer(CRC);
+	SPITransfer(0x40 + 0x01);
+	for(uint8_t k = 0; k < 4; k++) SPITransfer(0x00);
+	SPITransfer(CRC);
 	
 	while(R1)
 	{
-		R1 = spiTransfer(0xFF);
+		R1 = SPITransfer(0xFF);
 		usartTransmit(R1);
 	}
 	
@@ -193,28 +192,28 @@ void SDCardInit()
 	usartTransmit('3');
 }
 //-----------------------------------------------------------------------------
-// Write a single block of 512 bytes
+// Write a single block of 512 bytes to the SD Card
 //-----------------------------------------------------------------------------
 void SDCardWriteSingleBlock(uint8_t* address, uint8_t* data)
 {
 	PORTB &= ~(1 << PORTB2);
 	
 	// CMD24
-	spiTransfer(0x40 + 0x24);
-	for(uint8_t k = 0; k < 4; k++) spiTransfer(address[k]);
-	spiTransfer(CRC);
-	uint8_t R1 = spiTransfer(0xFF);
+	SPITransfer(0x40 + 0x24);
+	for(uint8_t k = 0; k < 4; k++) SPITransfer(address[k]);
+	SPITransfer(CRC);
+	uint8_t R1 = SPITransfer(0xFF);
 	
 	usartTransmit(R1);
 	
 	// Wait 1 byte
-	spiTransfer(0xFF);
+	SPITransfer(0xFF);
 	
 	// Data Packet
-	spiTransfer(0xFE); // Data Token
-	for(uint8_t k = 0; k < 512; k++) spiTransfer(data[k]);
-	spiTransfer(CRC); spiTransfer(CRC);
-	uint8_t dataResponse = spiTransfer(0xFF);
+	SPITransfer(0xFE); // Data Token
+	for(uint8_t k = 0; k < 512; k++) SPITransfer(data[k]);
+	SPITransfer(CRC); SPITransfer(CRC);
+	uint8_t dataResponse = SPITransfer(0xFF);
 	
 	usartTransmit(dataResponse);
 	
@@ -223,7 +222,7 @@ void SDCardWriteSingleBlock(uint8_t* address, uint8_t* data)
 
 /* Sleep, Resources: Timer 1 */
 //-----------------------------------------------------------------------------
-// Configuration
+// Timer 1 Configuration
 //-----------------------------------------------------------------------------
 void sleepConfig()
 {
@@ -265,7 +264,7 @@ int main()
 	// Initialization
 	pluviometerConfig(); pluviometerInterruptEnable(); sei();
 	tensiometerConfig(); tensiometerEnable();
-	SDCardConfig(); SDCardEnable(); SDCardInit();
+	SPIConfig(); SDCardEnable(); SDCardInit();
 	sleepConfig();
 	
 	uint32_t currentBlockAddress = 0;
