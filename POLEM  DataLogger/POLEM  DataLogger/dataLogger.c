@@ -267,8 +267,7 @@ int main()
 	{
 		sleep_mode();
 		
-		//if (tim2OvfCounter == 219510) // One hour
-		if(tim2OvfCounter > 61) // One second
+		if (tim2OvfCounter == 219510) // One hour
 		{
 			tim2OvfCounter = 0;
 		
@@ -287,7 +286,7 @@ int main()
 			SDCardDataBlock[7] = (currentBlockAddress >> 0);
 		
 			// Pluviometer
-			pluviometerCounter = 0x55AA; //Test
+			pluviometerCounter = 0x55AA55AA55AA55AA; //Test
 			SDCardDataBlock[8] = (pluviometerCounter >> 56);
 			SDCardDataBlock[9] = (pluviometerCounter >> 48);
 			SDCardDataBlock[10] = (pluviometerCounter >> 40);
