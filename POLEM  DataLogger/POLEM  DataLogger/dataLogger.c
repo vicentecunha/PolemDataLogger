@@ -298,8 +298,9 @@ int main()
 		SDCardDataBlock[5] = (currentBlockAddress >> 16);
 		SDCardDataBlock[6] = (currentBlockAddress >> 8);
 		SDCardDataBlock[7] = (currentBlockAddress >> 0);
-			
+		
 		// Pluviometer
+		pluviometerCounter = 0x55AA; //Test
 		SDCardDataBlock[8] = (pluviometerCounter >> 56);
 		SDCardDataBlock[9] = (pluviometerCounter >> 48);
 		SDCardDataBlock[10] = (pluviometerCounter >> 40);
