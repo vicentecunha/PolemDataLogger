@@ -58,16 +58,16 @@ ISR(INT0_vect)
 	pluviometerCounter++;
 }
 
-/* Tensiometer, Resources: Analog-to-Digital Converter */
+/* Analog-to-Digital Converter */
 //-----------------------------------------------------------------------------
 // Configuration
 //-----------------------------------------------------------------------------
-void tensiometerConfig()
+void adcConfig()
 {
 	// Internal 1.1V Voltage Reference with external capacitor at AREF pin
 	ADMUX |= (1 << REFS1)|(1 << REFS0);	
-	// // ADC Conversion Result is right adjusted. Select channel input ADC0
-	ADMUX &= ~((1 << ADLAR)|(1 << MUX3)|(1 << MUX2)|(1 << MUX1)|(1 << MUX0));	
+	// // ADC Conversion Result is right adjusted.
+	ADMUX &= ~((1 << ADLAR);
 	// ADC Prescaler of 128
 	ADCSRA |= (1 << ADPS2)|(1 << ADPS1)|(1 << ADPS0);	
 	// Digital Input Disable
@@ -76,22 +76,39 @@ void tensiometerConfig()
 //-----------------------------------------------------------------------------
 // ADC Enable
 //-----------------------------------------------------------------------------
-void tensiometerEnable()
+void adcEnable()
 {
 	ADCSRA |= (1 << ADEN);
 }
 //-----------------------------------------------------------------------------
 // ADC Disable
 //-----------------------------------------------------------------------------
-void tensiometerDisable()
+void adcDisable()
 {
 	ADCSRA &= ~(1 << ADEN);
 }
+
+/* Irrometer, Resources: Analog-to-Digital Converter 0 */
 //-----------------------------------------------------------------------------
-// Single Analog-to-Digital Conversion
+// Single Analog-to-Digital Conversion of Irrometer
 //-----------------------------------------------------------------------------
-uint16_t tensiometerSingleConversion()
+uint16_t irrometerSingleConversion()
 {
+	// Select channel input ADC0
+	ADMUX &= ~((1 << MUX3)|(1 << MUX2)|(1 << MUX1)|(1 << MUX0));	
+	ADCSRA |= (1 << ADSC); // ADC Start Conversion
+	while(!(ADCSRA & (1 << ADIF))); // Wait conversion
+	return((ADCH << 8) + ADCL);
+}
+
+/* Thermometer, Resources: Analog-to-Digital Converter 1 */
+//-----------------------------------------------------------------------------
+// Single Analog-to-Digital Conversion of Thermometer
+//-----------------------------------------------------------------------------
+uint16_t thermometerSingleConversion()
+{
+	// Select channel input ADC1
+	ADMUX &= ~((1 << MUX3)|(1 << MUX2)|(1 << MUX1)); ADMUX |= (1 << MUX0);
 	ADCSRA |= (1 << ADSC); // ADC Start Conversion
 	while(!(ADCSRA & (1 << ADIF))); // Wait conversion
 	return((ADCH << 8) + ADCL);
@@ -306,12 +323,19 @@ int main()
 		//SDCardDataBlock[7] = (pluviometerCounter >> 0);
 		//SDCardDataBlock[8] = 0x00;
 		//
-		//// Tensiometer
-		//uint16_t tensiometerMeasure = tensiometerSingleConversion();
+		//// Irrometer
+		//uint16_t irrometerMeasuer = irrometerSingleConversion();
 		//
-		//SDCardDataBlock[9] = (tensiometerMeasure >> 8);
-		//SDCardDataBlock[10] = (tensiometerMeasure >> 0);
+		//SDCardDataBlock[9] = (irrometerMeasuer >> 8);
+		//SDCardDataBlock[10] = (irrometerMeasuer >> 0);
 		//SDCardDataBlock[11] = 0x00;
+		//
+		//// Thermometer
+		//uint16_t thermometerMeasure = thermometerSingleConversion();
+		//
+		//SDCardDataBlock[12] = (thermometerMeasure >> 8);
+		//SDCardDataBlock[13] = (thermometerMeasure >> 0);
+		//SDCardDataBlock[14] = 0x00;
 		
 		// Block Address
 		SDCardBlockAddress[0] = (currentBlockAddress >> 24);
@@ -326,9 +350,9 @@ int main()
 		currentBlockAddress++;
 		
 		// Sleep
-		tensiometerDisable(); SDCardDisable();
+		adcDisable(); SDCardDisable();
 		sleepOneHour();
-		tensiometerEnable(); SDCardEnable();
+		adcEnable(); SDCardEnable();
 	}
 
 	return 0;
