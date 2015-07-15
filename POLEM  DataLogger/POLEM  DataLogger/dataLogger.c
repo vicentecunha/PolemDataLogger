@@ -67,7 +67,7 @@ void adcConfig()
 	// Internal 1.1V Voltage Reference with external capacitor at AREF pin
 	ADMUX |= (1 << REFS1)|(1 << REFS0);	
 	// // ADC Conversion Result is right adjusted.
-	ADMUX &= ~((1 << ADLAR);
+	ADMUX &= ~(1 << ADLAR);
 	// ADC Prescaler of 128
 	ADCSRA |= (1 << ADPS2)|(1 << ADPS1)|(1 << ADPS0);	
 	// Digital Input Disable
@@ -283,7 +283,7 @@ int main()
 	
 	// Initialization
 	pluviometerConfig(); pluviometerInterruptEnable(); sei();
-	tensiometerConfig(); tensiometerEnable();
+	adcConfig(); adcEnable();
 	SPIConfig(); SDCardEnable(); SDCardInit();
 	sleepConfig();
 	
