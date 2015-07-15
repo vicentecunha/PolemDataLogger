@@ -285,40 +285,53 @@ int main()
 	uint32_t currentBlockAddress = 0;
 	uint8_t SDCardBlockAddress[4];
 	uint8_t SDCardDataBlock[512];
-	for(uint16_t k = 20; k < 512; k++) SDCardDataBlock[k] = 0x00;
+	for(uint16_t k = 32; k < 512; k++) SDCardDataBlock[k] = 0x00;
 
 	while(1)
 	{
 		// Block Address ("Timestamp", one per hour)
-		SDCardDataBlock[0] = (currentBlockAddress >> 24);
-		SDCardDataBlock[1] = (currentBlockAddress >> 16);
-		SDCardDataBlock[2] = (currentBlockAddress >> 8);
-		SDCardDataBlock[3] = (currentBlockAddress >> 0);
-		SDCardDataBlock[4] = '\t';
-		
+		SDCardDataBlock[0] = 0x00;
+		SDCardDataBlock[1] = 0x00;
+		SDCardDataBlock[2] = 0x00;
+		SDCardDataBlock[3] = 0x00;
+		SDCardDataBlock[4] = (currentBlockAddress >> 24);
+		SDCardDataBlock[5] = (currentBlockAddress >> 16);
+		SDCardDataBlock[6] = (currentBlockAddress >> 8);
+		SDCardDataBlock[7] = (currentBlockAddress >> 0);
+			
 		// Pluviometer
-		SDCardDataBlock[5] = (pluviometerCounter >> 56);
-		SDCardDataBlock[6] = (pluviometerCounter >> 48);
-		SDCardDataBlock[7] = (pluviometerCounter >> 40);
-		SDCardDataBlock[8] = (pluviometerCounter >> 32); 
-		SDCardDataBlock[9] = (pluviometerCounter >> 24); 
-		SDCardDataBlock[10] = (pluviometerCounter >> 16);
-		SDCardDataBlock[12] = (pluviometerCounter >> 8);
-		SDCardDataBlock[13] = (pluviometerCounter >> 0);
-		SDCardDataBlock[14] = '\t';
-		
+		SDCardDataBlock[8] = (pluviometerCounter >> 56);
+		SDCardDataBlock[9] = (pluviometerCounter >> 48);
+		SDCardDataBlock[10] = (pluviometerCounter >> 40);
+		SDCardDataBlock[11] = (pluviometerCounter >> 32); 
+		SDCardDataBlock[12] = (pluviometerCounter >> 24); 
+		SDCardDataBlock[13] = (pluviometerCounter >> 16);
+		SDCardDataBlock[14] = (pluviometerCounter >> 8);
+		SDCardDataBlock[15] = (pluviometerCounter >> 0);
+
 		// Irrometer
 		uint16_t irrometerMeasuer = irrometerSingleConversion();
 		
-		SDCardDataBlock[15] = (irrometerMeasuer >> 8);
-		SDCardDataBlock[16] = (irrometerMeasuer >> 0);
-		SDCardDataBlock[17] = '\t';
+		SDCardDataBlock[16] = 0x00;
+		SDCardDataBlock[17]	= 0x00;
+		SDCardDataBlock[18]	= 0x00;
+		SDCardDataBlock[19]	= 0x00;
+		SDCardDataBlock[20]	= 0x00;
+		SDCardDataBlock[21] = 0x00;
+		SDCardDataBlock[22] = (irrometerMeasuer >> 8);
+		SDCardDataBlock[23] = (irrometerMeasuer >> 0);
 		
 		// Thermometer
 		uint16_t thermometerMeasure = thermometerSingleConversion();
 		
-		SDCardDataBlock[18] = (thermometerMeasure >> 8);
-		SDCardDataBlock[19] = (thermometerMeasure >> 0);
+		SDCardDataBlock[24] = 0x00;
+		SDCardDataBlock[25]	= 0x00;
+		SDCardDataBlock[26]	= 0x00;
+		SDCardDataBlock[27]	= 0x00;
+		SDCardDataBlock[28]	= 0x00;
+		SDCardDataBlock[29] = 0x00;
+		SDCardDataBlock[30] = (thermometerMeasure >> 8);
+		SDCardDataBlock[31] = (thermometerMeasure >> 0);
 		
 		// Block Address
 		SDCardBlockAddress[0] = (currentBlockAddress >> 24);
