@@ -5,6 +5,7 @@
 //	License: --
 //-----------------------------------------------------------------------------
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
 
 /* Pluviometer, Resources: external interrupt 0 (INT0) */
 //-----------------------------------------------------------------------------
@@ -217,139 +218,121 @@ void SDCardWriteSingleBlock(uint8_t* address, uint8_t* data)
 	do {R1 = SPITransfer(0xFF);} while(R1 == 0xFF);
 	PORTB |= (1 << PORTB2);
 	SPITransfer(0xFF);
-	
+
 	// Data Packet
 	PORTB &= ~(1 << PORTB2);
 	SPITransfer(0xFE); // Data Token
 	for(int16_t k = 0; k < 512; k++) SPITransfer(data[k]); // Data Block
 	SPITransfer(0xFF); SPITransfer(0xFF); // CRC
-	SPITransfer(0xFF); //Data Response
+	SPITransfer(0xFF); // Data Response
+	while(!SPITransfer(0xFF)); // Busy
 	PORTB |= (1 << PORTB2);
 	SPITransfer(0xFF);
 }
 
-/* Sleep, Resources: Timer 1 */
+/* Sleep, Resources: Timer 2 */
+volatile uint32_t tim2OvfCounter = 0;
 //-----------------------------------------------------------------------------
-// Overflow Counter
+// Timer 2 Interrupt Enable
 //-----------------------------------------------------------------------------
-uint16_t ovfCounter = 0;
-//-----------------------------------------------------------------------------
-// Timer 1 Configuration
-//-----------------------------------------------------------------------------
-void sleepConfig()
+void timer2Enable()
 {
-	// Normal port operation, OC1A/OC1B disconnected
-	TCCR1A &= ~((1 << COM1A1)|(1 << COM1A0)|(1 << COM1B0)|(1 << COM1B0));
-	// Normal mode (counter)
-	TCCR1B &= ~((1 << WGM13)|(1 << WGM12));
-	TCCR1A &= ~((1 << WGM11)|(1 << WGM10));	
-	// Input Capture Noise Canceler disabled
-	TCCR1B &= ~(1 << ICNC1);	
-	// Input Capture, Output Compare B/A Match Interrupts disabled
-	TIMSK1 &= ~((1 << ICIE1)|(1 << OCIE1B)|(1 << OCIE1A));	
-	// Timer1 Overflow Interrupt Enable
-	TIMSK1 |= (1 << TOIE1);
+	// Timer2 Overflow Interrupt Enable
+	TIMSK2 |= (1 << TOIE2);
+	// Start counter, prescaler to 1024, ovfPeriod = 16.4 ms
+	TCCR2B |= (1 << CS22)|(1 << CS21)|(1 << CS20);
 }
 //-----------------------------------------------------------------------------
-// Sleep for One Hour
+// Timer 2 Overflow Interrupt Handler
 //-----------------------------------------------------------------------------
-void sleepOneHour()
+ISR(TIMER2_OVF_vect)
 {
-	// Reset counters
-	TCNT1H = 0x00; TCNT1L = 0x00; ovfCounter = 0;
-	// Start counter, prescaler to 1024 (15625 Hz, or T = 64 us)
-	TCCR1B |= (1 << CS12)|(1 << CS10); TCCR1B &= ~(1 << CS11);
-	// To sleep for 1 hour, with T = 64 ns, it takes 56250000 counts, 858 ovf
-	while(ovfCounter < 858);
-	// Stop counter
-	TCCR1B &= ~((1 << CS12)|(1 << CS11)|(1 << CS10));
+	tim2OvfCounter++;
 }
-//-----------------------------------------------------------------------------
-// Timer 1 Overflow Interrupt Handler
-//-----------------------------------------------------------------------------
-ISR(TIMER1_OVF_vect)
-{
-	ovfCounter++;
-}
-
 
 /* Main */
 int main()
 {
 	// Initialization
-	pluviometerConfig(); pluviometerInterruptEnable(); sei();
+	pluviometerConfig(); pluviometerInterruptEnable();
 	ADCConfig(); ADCEnable();
 	SPIConfig(); SDCardEnable(); SDCardInit();
-	sleepConfig();
-	
-	uint32_t currentBlockAddress = 0;
-	uint8_t SDCardBlockAddress[4];
-	uint8_t SDCardDataBlock[512];
-	for(uint16_t k = 32; k < 512; k++) SDCardDataBlock[k] = 0x00;
+	timer2Enable();	
 
+	set_sleep_mode(SLEEP_MODE_PWR_SAVE);	
+	sei();
+	uint32_t currentBlockAddress = 0;
+	
 	while(1)
 	{
-		// Block Address ("Timestamp", one per hour)
-		SDCardDataBlock[0] = 0x00;
-		SDCardDataBlock[1] = 0x00;
-		SDCardDataBlock[2] = 0x00;
-		SDCardDataBlock[3] = 0x00;
-		SDCardDataBlock[4] = (currentBlockAddress >> 24);
-		SDCardDataBlock[5] = (currentBlockAddress >> 16);
-		SDCardDataBlock[6] = (currentBlockAddress >> 8);
-		SDCardDataBlock[7] = (currentBlockAddress >> 0);
+		sleep_mode();
 		
-		// Pluviometer
-		pluviometerCounter = 0x55AA; //Test
-		SDCardDataBlock[8] = (pluviometerCounter >> 56);
-		SDCardDataBlock[9] = (pluviometerCounter >> 48);
-		SDCardDataBlock[10] = (pluviometerCounter >> 40);
-		SDCardDataBlock[11] = (pluviometerCounter >> 32); 
-		SDCardDataBlock[12] = (pluviometerCounter >> 24); 
-		SDCardDataBlock[13] = (pluviometerCounter >> 16);
-		SDCardDataBlock[14] = (pluviometerCounter >> 8);
-		SDCardDataBlock[15] = (pluviometerCounter >> 0);
+		//if (tim2OvfCounter == 219510) // One hour
+		if(tim2OvfCounter > 61) // One second
+		{
+			tim2OvfCounter = 0;
+		
+			uint8_t SDCardBlockAddress[4];
+			uint8_t SDCardDataBlock[512];
+			for(uint16_t k = 32; k < 512; k++) SDCardDataBlock[k] = 0x00;
+		
+			// Timestamp (one per hour)
+			SDCardDataBlock[0] = 0x00;
+			SDCardDataBlock[1] = 0x00;
+			SDCardDataBlock[2] = 0x00;
+			SDCardDataBlock[3] = 0x00;
+			SDCardDataBlock[4] = (currentBlockAddress >> 24);
+			SDCardDataBlock[5] = (currentBlockAddress >> 16);
+			SDCardDataBlock[6] = (currentBlockAddress >> 8);
+			SDCardDataBlock[7] = (currentBlockAddress >> 0);
+		
+			// Pluviometer
+			pluviometerCounter = 0x55AA; //Test
+			SDCardDataBlock[8] = (pluviometerCounter >> 56);
+			SDCardDataBlock[9] = (pluviometerCounter >> 48);
+			SDCardDataBlock[10] = (pluviometerCounter >> 40);
+			SDCardDataBlock[11] = (pluviometerCounter >> 32);
+			SDCardDataBlock[12] = (pluviometerCounter >> 24);
+			SDCardDataBlock[13] = (pluviometerCounter >> 16);
+			SDCardDataBlock[14] = (pluviometerCounter >> 8);
+			SDCardDataBlock[15] = (pluviometerCounter >> 0);
 
-		// Irrometer
-		uint16_t irrometerMeasuer = irrometerSingleConversion();
+			// Irrometer
+			uint16_t irrometerMeasuer = irrometerSingleConversion();
 		
-		SDCardDataBlock[16] = 0x00;
-		SDCardDataBlock[17]	= 0x00;
-		SDCardDataBlock[18]	= 0x00;
-		SDCardDataBlock[19]	= 0x00;
-		SDCardDataBlock[20]	= 0x00;
-		SDCardDataBlock[21] = 0x00;
-		SDCardDataBlock[22] = (irrometerMeasuer >> 8);
-		SDCardDataBlock[23] = (irrometerMeasuer >> 0);
+			SDCardDataBlock[16] = 0x00;
+			SDCardDataBlock[17]	= 0x00;
+			SDCardDataBlock[18]	= 0x00;
+			SDCardDataBlock[19]	= 0x00;
+			SDCardDataBlock[20]	= 0x00;
+			SDCardDataBlock[21] = 0x00;
+			SDCardDataBlock[22] = (irrometerMeasuer >> 8);
+			SDCardDataBlock[23] = (irrometerMeasuer >> 0);
 		
-		// Thermometer
-		uint16_t thermometerMeasure = thermometerSingleConversion();
+			// Thermometer
+			uint16_t thermometerMeasure = thermometerSingleConversion();
 		
-		SDCardDataBlock[24] = 0x00;
-		SDCardDataBlock[25]	= 0x00;
-		SDCardDataBlock[26]	= 0x00;
-		SDCardDataBlock[27]	= 0x00;
-		SDCardDataBlock[28]	= 0x00;
-		SDCardDataBlock[29] = 0x00;
-		SDCardDataBlock[30] = (thermometerMeasure >> 8);
-		SDCardDataBlock[31] = (thermometerMeasure >> 0);
+			SDCardDataBlock[24] = 0x00;
+			SDCardDataBlock[25]	= 0x00;
+			SDCardDataBlock[26]	= 0x00;
+			SDCardDataBlock[27]	= 0x00;
+			SDCardDataBlock[28]	= 0x00;
+			SDCardDataBlock[29] = 0x00;
+			SDCardDataBlock[30] = (thermometerMeasure >> 8);
+			SDCardDataBlock[31] = (thermometerMeasure >> 0);
 		
-		// Block Address
-		SDCardBlockAddress[0] = (currentBlockAddress >> 24);
-		SDCardBlockAddress[1] = (currentBlockAddress >> 16);
-		SDCardBlockAddress[2] = (currentBlockAddress >> 8);
-		SDCardBlockAddress[3] = (currentBlockAddress >> 0);
+			// Block Address
+			SDCardBlockAddress[0] = (currentBlockAddress >> 24);
+			SDCardBlockAddress[1] = (currentBlockAddress >> 16);
+			SDCardBlockAddress[2] = (currentBlockAddress >> 8);
+			SDCardBlockAddress[3] = (currentBlockAddress >> 0);
 		
-		// Write Data Block
-		SDCardWriteSingleBlock(SDCardBlockAddress, SDCardDataBlock);
+			// Write Data Block
+			SDCardWriteSingleBlock(SDCardBlockAddress, SDCardDataBlock);
 		
-		// Increment Block Address
-		currentBlockAddress++;
-		
-		// Sleep
-		ADCDisable(); SDCardDisable();
-		sleepOneHour();
-		ADCEnable(); SDCardEnable();
+			// Increment Block Address
+			currentBlockAddress++;
+		}
 	}
 
 	return 0;
