@@ -6,26 +6,6 @@
 //-----------------------------------------------------------------------------
 #include <avr/interrupt.h>
 
-/* DEBUG: USART */
-void usartInit()
-{
-	UBRR0L = 103; // 9600 bps
-	UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);	// Dados de 8 bits
-	UCSR0B = (1<<RXEN0)|(1<<TXEN0);
-}
-
-unsigned char usartReceive()
-{
-	while(!(UCSR0A & (1 << RXC0)));
-	return(UDR0);
-}
-
-void usartTransmit(unsigned char data)
-{
-	while(!(UCSR0A & (1 << UDRE0)));
-	UDR0 = data;
-}
-
 /* Pluviometer, Resources: external interrupt 0 (INT0) */
 //-----------------------------------------------------------------------------
 // Global Variables
@@ -66,7 +46,7 @@ void ADCConfig()
 {
 	// Internal 1.1V Voltage Reference with external capacitor at AREF pin
 	ADMUX |= (1 << REFS1)|(1 << REFS0);	
-	// // ADC Conversion Result is right adjusted.
+	// ADC Conversion Result is right adjusted.
 	ADMUX &= ~(1 << ADLAR);
 	// ADC Prescaler of 128
 	ADCSRA |= (1 << ADPS2)|(1 << ADPS1)|(1 << ADPS0);	
@@ -98,6 +78,7 @@ uint16_t irrometerSingleConversion()
 	ADMUX &= ~((1 << MUX3)|(1 << MUX2)|(1 << MUX1)|(1 << MUX0));	
 	ADCSRA |= (1 << ADSC); // ADC Start Conversion
 	while(!(ADCSRA & (1 << ADIF))); // Wait conversion
+	ADCSRA |= (1 << ADIF); // Clear flag
 	return((ADCH << 8) + ADCL);
 }
 
@@ -111,6 +92,7 @@ uint16_t thermometerSingleConversion()
 	ADMUX &= ~((1 << MUX3)|(1 << MUX2)|(1 << MUX1)); ADMUX |= (1 << MUX0);
 	ADCSRA |= (1 << ADSC); // ADC Start Conversion
 	while(!(ADCSRA & (1 << ADIF))); // Wait conversion
+	ADCSRA |= (1 << ADIF); // Clear flag
 	return((ADCH << 8) + ADCL);
 }
 
@@ -174,7 +156,6 @@ void SDCardInit()
 	SPITransfer(0x00); SPITransfer(0x00); SPITransfer(0x95);
 	uint8_t R1 = 0;
 	do {R1 = SPITransfer(0xFF);} while(R1 == 0xFF);
-	usartTransmit(R1);
 	PORTB |= (1 << PORTB2);
 	SPITransfer(0xFF);
 	
@@ -183,7 +164,6 @@ void SDCardInit()
 	SPITransfer(0x48); SPITransfer(0x00); SPITransfer(0x00);
 	SPITransfer(0x01); SPITransfer(0xAA); SPITransfer(0x87);
 	do {R1 = SPITransfer(0xFF);} while(R1 == 0xFF);
-	usartTransmit(R1);
 	for(int8_t k = 0; k < 4; k++) SPITransfer(0xFF);
 	PORTB |= (1 << PORTB2);
 	SPITransfer(0xFF);
@@ -194,7 +174,6 @@ void SDCardInit()
 		SPITransfer(0x40 + 58); SPITransfer(0x00); SPITransfer(0x00);
 		SPITransfer(0x00); SPITransfer(0x00); SPITransfer(0xFF);
 		do {R1 = SPITransfer(0xFF);} while(R1 == 0xFF);
-		usartTransmit(R1);
 		for(int8_t k = 0; k < 4; k++) SPITransfer(0xFF);
 		PORTB |= (1 << PORTB2);
 		SPITransfer(0xFF);
@@ -203,7 +182,6 @@ void SDCardInit()
 		SPITransfer(0x40 + 55); SPITransfer(0x00); SPITransfer(0x00);
 		SPITransfer(0x00); SPITransfer(0x00); SPITransfer(0xFF);
 		do {R1 = SPITransfer(0xFF);} while(R1 == 0xFF);
-		usartTransmit(R1);
 		PORTB |= (1 << PORTB2);
 		SPITransfer(0xFF);
 		
@@ -211,7 +189,6 @@ void SDCardInit()
 		SPITransfer(0x40 + 41); SPITransfer(0x40); SPITransfer(0x00);
 		SPITransfer(0x00); SPITransfer(0x00); SPITransfer(0xFF);
 		do {R1 = SPITransfer(0xFF);} while(R1 == 0xFF);
-		usartTransmit(R1);
 		PORTB |= (1 << PORTB2);
 		SPITransfer(0xFF);
 	} while(R1);
@@ -221,7 +198,6 @@ void SDCardInit()
 	SPITransfer(0x40 + 58); SPITransfer(0x00); SPITransfer(0x00);
 	SPITransfer(0x00); SPITransfer(0x00); SPITransfer(0xFF);
 	do {R1 = SPITransfer(0xFF);} while(R1 == 0xFF);
-	usartTransmit(R1);
 	for(int8_t k = 0; k < 4; k++) SPITransfer(0xFF);
 	PORTB |= (1 << PORTB2);
 	SPITransfer(0xFF);
@@ -239,26 +215,24 @@ void SDCardWriteSingleBlock(uint8_t* address, uint8_t* data)
 	SPITransfer(0xFF);
 	uint8_t R1 = 0;
 	do {R1 = SPITransfer(0xFF);} while(R1 == 0xFF);
-	usartTransmit(R1);
 	PORTB |= (1 << PORTB2);
 	SPITransfer(0xFF);
 	
 	// Data Packet
 	PORTB &= ~(1 << PORTB2);
 	SPITransfer(0xFE); // Data Token
-	for(int16_t k = 0; k < 512; k++)
-	{
-		SPITransfer(data[k]); // Data Block
-		usartTransmit(data[k]);
-	}
+	for(int16_t k = 0; k < 512; k++) SPITransfer(data[k]); // Data Block
 	SPITransfer(0xFF); SPITransfer(0xFF); // CRC
-	uint8_t dataResponse = SPITransfer(0xFF);
-	usartTransmit(dataResponse);
+	SPITransfer(0xFF); //Data Response
 	PORTB |= (1 << PORTB2);
 	SPITransfer(0xFF);
 }
 
 /* Sleep, Resources: Timer 1 */
+//-----------------------------------------------------------------------------
+// Overflow Counter
+//-----------------------------------------------------------------------------
+uint16_t ovfCounter = 0;
 //-----------------------------------------------------------------------------
 // Timer 1 Configuration
 //-----------------------------------------------------------------------------
@@ -277,28 +251,31 @@ void sleepConfig()
 	TIMSK1 |= (1 << TOIE1);
 }
 //-----------------------------------------------------------------------------
-// Sleep for one hour
+// Sleep for One Hour
 //-----------------------------------------------------------------------------
 void sleepOneHour()
 {
-	// Reset counter
-	TCNT1H = 0x00; TCNT1L = 0x00;	
-	// To sleep for 1 hour, with T = 64 ms, it takes 56250 (0xDBBA) counts
-	OCR1AH = 0xDB; OCR1AL = 0xBA;	
-	// Start counter, prescaler to 1024 (15.625 kHz, or T = 64 ms)
+	// Reset counters
+	TCNT1H = 0x00; TCNT1L = 0x00; ovfCounter = 0;
+	// Start counter, prescaler to 1024 (15625 Hz, or T = 64 us)
 	TCCR1B |= (1 << CS12)|(1 << CS10); TCCR1B &= ~(1 << CS11);
-	// Wait for compare match A
-	while(!(TIFR1 & (1 << OCF1A)));	
+	// To sleep for 1 hour, with T = 64 ns, it takes 56250000 counts, 858 ovf
+	while(ovfCounter < 858);
 	// Stop counter
 	TCCR1B &= ~((1 << CS12)|(1 << CS11)|(1 << CS10));
 }
+//-----------------------------------------------------------------------------
+// Timer 1 Overflow Interrupt Handler
+//-----------------------------------------------------------------------------
+ISR(TIMER1_OVF_vect)
+{
+	ovfCounter++;
+}
+
 
 /* Main */
 int main()
 {
-	// DEBUG
-	usartInit();
-	
 	// Initialization
 	pluviometerConfig(); pluviometerInterruptEnable(); sei();
 	ADCConfig(); ADCEnable();
@@ -308,48 +285,40 @@ int main()
 	uint32_t currentBlockAddress = 0;
 	uint8_t SDCardBlockAddress[4];
 	uint8_t SDCardDataBlock[512];
-	for(uint16_t k = 12; k < 512; k++) SDCardDataBlock[k] = 0x00;
+	for(uint16_t k = 20; k < 512; k++) SDCardDataBlock[k] = 0x00;
 
 	while(1)
 	{
-		// DEBUG: Hello World!
-		SDCardDataBlock[0] = 'H';
-		SDCardDataBlock[1] = 'e';
-		SDCardDataBlock[2] = 'l';
-		SDCardDataBlock[3] = 'l';
-		SDCardDataBlock[4] = 'o';
-		SDCardDataBlock[5] = ' ';
-		SDCardDataBlock[6] = 'W';
-		SDCardDataBlock[7] = 'o';
-		SDCardDataBlock[8] = 'r';
-		SDCardDataBlock[9] = 'l';
-		SDCardDataBlock[10] = 'd';
-		SDCardDataBlock[11] = '!';
+		// Block Address ("Timestamp", one per hour)
+		SDCardDataBlock[0] = (currentBlockAddress >> 24);
+		SDCardDataBlock[1] = (currentBlockAddress >> 16);
+		SDCardDataBlock[2] = (currentBlockAddress >> 8);
+		SDCardDataBlock[3] = (currentBlockAddress >> 0);
+		SDCardDataBlock[4] = '\t';
 		
-		//// Pluviometer
-		//SDCardDataBlock[0] = (pluviometerCounter >> 56);
-		//SDCardDataBlock[1] = (pluviometerCounter >> 48);
-		//SDCardDataBlock[2] = (pluviometerCounter >> 40);
-		//SDCardDataBlock[3] = (pluviometerCounter >> 32);
-		//SDCardDataBlock[4] = (pluviometerCounter >> 24);
-		//SDCardDataBlock[5] = (pluviometerCounter >> 16);
-		//SDCardDataBlock[6] = (pluviometerCounter >> 8);
-		//SDCardDataBlock[7] = (pluviometerCounter >> 0);
-		//SDCardDataBlock[8] = 0x00;
-		//
-		//// Irrometer
-		//uint16_t irrometerMeasuer = irrometerSingleConversion();
-		//
-		//SDCardDataBlock[9] = (irrometerMeasuer >> 8);
-		//SDCardDataBlock[10] = (irrometerMeasuer >> 0);
-		//SDCardDataBlock[11] = 0x00;
-		//
-		//// Thermometer
-		//uint16_t thermometerMeasure = thermometerSingleConversion();
-		//
-		//SDCardDataBlock[12] = (thermometerMeasure >> 8);
-		//SDCardDataBlock[13] = (thermometerMeasure >> 0);
-		//SDCardDataBlock[14] = 0x00;
+		// Pluviometer
+		SDCardDataBlock[5] = (pluviometerCounter >> 56);
+		SDCardDataBlock[6] = (pluviometerCounter >> 48);
+		SDCardDataBlock[7] = (pluviometerCounter >> 40);
+		SDCardDataBlock[8] = (pluviometerCounter >> 32); 
+		SDCardDataBlock[9] = (pluviometerCounter >> 24); 
+		SDCardDataBlock[10] = (pluviometerCounter >> 16);
+		SDCardDataBlock[12] = (pluviometerCounter >> 8);
+		SDCardDataBlock[13] = (pluviometerCounter >> 0);
+		SDCardDataBlock[14] = '\t';
+		
+		// Irrometer
+		uint16_t irrometerMeasuer = irrometerSingleConversion();
+		
+		SDCardDataBlock[15] = (irrometerMeasuer >> 8);
+		SDCardDataBlock[16] = (irrometerMeasuer >> 0);
+		SDCardDataBlock[17] = '\t';
+		
+		// Thermometer
+		uint16_t thermometerMeasure = thermometerSingleConversion();
+		
+		SDCardDataBlock[18] = (thermometerMeasure >> 8);
+		SDCardDataBlock[19] = (thermometerMeasure >> 0);
 		
 		// Block Address
 		SDCardBlockAddress[0] = (currentBlockAddress >> 24);
