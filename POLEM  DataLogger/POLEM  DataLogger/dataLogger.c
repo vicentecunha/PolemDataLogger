@@ -267,7 +267,7 @@ int main()
 	{
 		sleep_mode();
 		
-		if (tim2OvfCounter == 219510) // One hour
+		if (tim2OvfCounter > 219510) // One hour
 		{
 			tim2OvfCounter = 0;
 		
